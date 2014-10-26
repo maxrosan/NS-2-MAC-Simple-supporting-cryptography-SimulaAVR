@@ -17,11 +17,12 @@ EXTRA_DIST = main.c serial.c serial.h
 
 examples_DATA = $(EXAMPLE).hex $(EXAMPLE).elf $(EXTRA_DIST) README
 
+
 CLEANFILES = $(EXAMPLE).hex $(EXAMPLE).elf $(AVR_OBJS)
 
 
 do: $(EXAMPLE).elf
-	../../src/simulavr $(SIMULAVR_ARGS)
+	PYTHONPATH=../../src @PYTHON@ simple_serial.py $(AVR_CPU) $< $(AVR_FREQUENCY)
 
 program: $(EXAMPLE).hex
 	avrdude -c stk500v2 -b 115200 -p $(AVR_CPU) -P $(SERIAL_AVR) \
