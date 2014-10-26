@@ -21,3 +21,10 @@
 *.nam
 *.tr
 
+*~
+*.o
+*.lo
+avr.vpi
+simulavr/Debug/
+simulavr/Release/
+

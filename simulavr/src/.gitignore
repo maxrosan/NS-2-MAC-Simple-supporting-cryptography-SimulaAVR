@@ -1,0 +1,30 @@
+# files to ignore by git
+devices.cfg
+kbdgentables
+avr_AT*.cpp
+avr_AT*.h
+
+# files created by configure
+Makefile
+config.h
+config.h.in
+
+# files created by make
+simulavr
+simulavr.exe
+stamp-h1
+.deps
+.libs
+.dirstamp
+*.la
+simulavr_wrap.cxx
+pysimulavr_wrap.*
+_pysimulavr.so
+_pysimulavr.pyd
+pysimulavr.py
+pysimulavr.pyc
+setup.py
+# files created by running setup.py
+pysimulavr.egg-info
+build
+dist
