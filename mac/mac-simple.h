@@ -49,6 +49,14 @@
 
 #include <queue>
 #include <algorithm>
+#include <sys/types.h> 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
+#include <unistd.h>
+#include <netdb.h>
 
 // Added by Sushmita to support event tracing (singal@nunki.usc.edu)
 #include "address.h"
@@ -59,6 +67,7 @@ class MacSimpleSendTimer;
 class MacSimpleRecvTimer;
 class MacSimpleDecryptTimer;
 class MacSimpleEncryptTimer;
+class SimulAVRClient;
 
 // Added by Sushmita to support event tracing (singal@nunki.usc.edu)
 class EventTrace;
@@ -242,6 +251,124 @@ public:
 	void handle(Event *e);
 };
 
+char *base64_encode(const unsigned char *data,
+                    size_t input_length,
+                    size_t *output_length);
+
+unsigned char *base64_decode(const char *data,
+                             size_t input_length,
+                             size_t *output_length);
+
+void build_decoding_table();
+
+void base64_cleanup();
+
+class SimulAVRClient {
+private:
+	int sock;
+	bool connected;
+	char *buffer;
+	int bufferSize;
+	MacSimple *macSimple;
+
+	void makeSocketLinger(int fd) {
+	        struct linger ling;
+	        ling.l_onoff=1;
+	        ling.l_linger=30;
+        	setsockopt(fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+	}
+	
+public:
+
+	int port;
+
+	SimulAVRClient(MacSimple *mac) {
+		port = 8080;
+		connected = false;
+	
+		bufferSize = 1024;
+		buffer = (char*) malloc(bufferSize);
+
+		macSimple = mac;
+	}
+
+	void sendPacketToEncrypt(Packet *packet) {
+
+		static char* ENCRYPT_CMD = "encrypt\n";
+		char *baseEnc;
+		size_t size;
+
+		if (!connected) return;
+
+		baseEnc = base64_encode(packet->accessdata(), packet->userdata()->size(), &size);
+
+		write(sock, ENCRYPT_CMD, strlen(ENCRYPT_CMD));
+
+		write(sock, baseEnc, size);
+		write(sock, "\n", 1);
+	
+	}
+
+	void sendPacketToDecrypt(Packet *packet) {
+
+		static char* DECRYPT_CMD = "decrypt\n";
+		char *baseEnc;
+		size_t size;
+
+		if (!connected) return;
+
+		baseEnc = base64_encode(packet->accessdata(), packet->userdata()->size(), &size);
+
+		write(sock, DECRYPT_CMD, strlen(DECRYPT_CMD));
+
+		write(sock, baseEnc, size);
+		write(sock, "\n", 1);
+	}
+
+	bool connectSock() {
+
+		struct sockaddr_in serv_addr;
+		struct hostent *server;
+
+		if (connected) {
+			return true;
+		}
+
+		sock = socket(AF_INET, SOCK_STREAM, 0);
+
+		if (sock < 0) {
+			return false;
+		}
+
+		server = gethostbyname("localhost");
+		
+		if (server == NULL) {
+			close(sock);
+			fprintf(stderr, "Failed to get host by name\n");
+			return false;
+		}
+
+		bzero((char*) &serv_addr, sizeof(serv_addr));
+
+		serv_addr.sin_family = AF_INET;
+		bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+		serv_addr.sin_port = htons(port);
+
+		makeSocketLinger(sock);
+
+		if (connect(sock, (const sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
+			close(sock);
+			fprintf(stderr, "Failed to connect to socket\n");
+			return false;
+		}
+
+		connected = true;
+
+		return true;
+
+	}
+
+};
 
 
 #endif

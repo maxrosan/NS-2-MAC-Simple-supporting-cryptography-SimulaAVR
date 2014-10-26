@@ -8,6 +8,9 @@ BAUD = 19200
 
 # Class to read serial data from AVR serial transmit pin.
 class SerialRxPin(pysimulavr.PySimulationMember, pysimulavr.Pin):
+
+    allCharsReceived = []
+
     def __init__(self):
         pysimulavr.Pin.__init__(self)
         pysimulavr.PySimulationMember.__init__(self)
@@ -15,12 +18,14 @@ class SerialRxPin(pysimulavr.PySimulationMember, pysimulavr.Pin):
         self.delay = 10**9 / BAUD
         self.current = 0
         self.pos = -1
+
     def SetInState(self, pin):
         pysimulavr.Pin.SetInState(self, pin)
         self.state = pin.outState
         if self.pos < 0 and pin.outState == pin.LOW:
             self.pos = 0
             self.sc.Add(self)
+
     def DoStep(self, trueHwStep):
         ishigh = self.state == self.HIGH
         self.current |= ishigh << self.pos
@@ -33,9 +38,11 @@ class SerialRxPin(pysimulavr.PySimulationMember, pysimulavr.Pin):
             self.current = 0
             return -1
         return self.delay
+
     def handleChar(self, c):
-        sys.stdout.write(c)
-        sys.stdout.flush()
+        self.allCharsReceived = self.allCharsReceived + [c]
+        #sys.stdout.write(c)
+        #sys.stdout.flush()
 
 # Class to send serial data to AVR serial receive pin.
 class SerialTxPin(pysimulavr.PySimulationMember, pysimulavr.Pin):
@@ -48,6 +55,7 @@ class SerialTxPin(pysimulavr.PySimulationMember, pysimulavr.Pin):
         self.current = 0
         self.pos = 0
         self.queue = ""
+
     def DoStep(self, trueHwStep):
         if not self.pos:
             if not self.queue:
@@ -62,6 +70,7 @@ class SerialTxPin(pysimulavr.PySimulationMember, pysimulavr.Pin):
         if self.pos >= SERIALBITS:
             self.pos = 0
         return self.delay
+
     def pushChars(self, c):
         queueEmpty = not self.queue
         self.queue += c
@@ -91,9 +100,47 @@ def main():
     net2.Add(txpin)
 
     # Run loop
-    sc.RunTimeRange(200000)
-    txpin.pushChars("Sending data...")
-    sc.RunTimeRange(400000000)
+    print sc.RunTimeRange(200000) ## ns
+
+    decoded = ['e', 'g', '\xae', '\x0b', 'o', '\xaf', '_', 'C', '\x03', 'f', 'O', 'k', '\xcf', '>', '\xf6', '\xad', '\xe1', '\x8d', '\xdd', '\x15', '\x97', 'P', 'E', '@', '~', 'l', '\xf3', '\x86', '\xf3', 'c', '&', '\x7f']
+    decMsg = "".join(decoded)
+
+    txt = "hello world xxx qweqwe qweqwe"
+    #txpin.pushChars('E' + chr(len(txt)) + txt)
+
+    txpin.pushChars('D' + chr(len(decMsg)) + decMsg)
+
+    start = sc.GetCurrentTime()
+
+    while True:
+      sc.RunTimeRange(100000)    
+
+      if len(rxpin.allCharsReceived) >= 4 and "".join(rxpin.allCharsReceived[-3:]) == "END":
+         break
+
+    end = sc.GetCurrentTime()
+
+    print rxpin.allCharsReceived[1:]
+    print "Interval: s", (end - start) / (10.**9)
+
+##
+
+    rxpin.allCharsReceived = []
+    txt = "hello world xxx qweqwe qweqwe"
+    txpin.pushChars('E' + chr(len(txt)) + txt)
+
+    start = sc.GetCurrentTime()
+
+    while True:
+      sc.RunTimeRange(100000)    
+
+      if len(rxpin.allCharsReceived) >= 4 and "".join(rxpin.allCharsReceived[-3:]) == "END":
+         break
+
+    end = sc.GetCurrentTime()
+
+    print rxpin.allCharsReceived[1:]
+    print "Interval: s", (end - start) / (10.**9)
 
 if __name__ == '__main__':
     main()
