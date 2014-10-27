@@ -297,6 +297,8 @@ public:
 		static char* ENCRYPT_CMD = "encrypt\n";
 		char *baseEnc;
 		size_t size;
+		char *ptr;
+		PacketData *pktData;
 
 		if (!connected) return;
 
@@ -306,7 +308,21 @@ public:
 
 		write(sock, baseEnc, size);
 		write(sock, "\n", 1);
-	
+
+		size = read(sock, buffer, bufferSize);
+		buffer[size] = 0;
+
+		ptr = strtok(buffer, "#");
+		fprintf(stderr, "msg = %s\n", ptr);
+
+		baseEnc = (char*) base64_decode(ptr, strlen(ptr), &size);
+		pktData = new PacketData(size);
+		memcpy(pktData->data(), baseEnc, size);
+
+		packet->setdata(pktData);
+
+		ptr = strtok(NULL, "#");
+		fprintf(stderr, "int = %s\n", ptr);
 	}
 
 	void sendPacketToDecrypt(Packet *packet) {
@@ -314,6 +330,8 @@ public:
 		static char* DECRYPT_CMD = "decrypt\n";
 		char *baseEnc;
 		size_t size;
+		char *ptr;
+		PacketData *pktData;
 
 		if (!connected) return;
 
@@ -323,6 +341,21 @@ public:
 
 		write(sock, baseEnc, size);
 		write(sock, "\n", 1);
+
+		size = read(sock, buffer, bufferSize);
+		buffer[size] = 0;
+
+		ptr = strtok(buffer, "#");
+		fprintf(stderr, "msg = %s\n", ptr);
+
+		baseEnc = (char*) base64_decode(ptr, strlen(ptr), &size);
+		pktData = new PacketData(size);
+		memcpy(pktData->data(), baseEnc, size);
+
+		packet->setdata(pktData);
+
+		ptr = strtok(NULL, "#");
+		fprintf(stderr, "int = %s\n", ptr);
 	}
 
 	bool connectSock() {

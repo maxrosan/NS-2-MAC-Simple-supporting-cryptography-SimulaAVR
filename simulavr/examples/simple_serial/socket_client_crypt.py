@@ -36,3 +36,31 @@ if __name__ == "__main__":
     # Activate the server; this will keep running until you
     # interrupt the program with Ctrl-C
     server.serve_forever()
+
+
+#        decoded = ['e', 'g', '\xae', '\x0b', 'o', '\xaf', '_', 'C', '\x03', 'f', 'O', 'k', '\xcf', '>', '\xf6', '\xad', '\xe1', '\x8d', '\xdd',     '\x15', '\x97', 'P', 'E', '@', '~', 'l', '\xf3', '\x86', '\xf3', 'c', '&', '\x7f']
+ #       decMsg = "".join(decoded)
+
+ #       #txpin.pushChars('E' + chr(len(txt)) + txt)
+
+  #      txpin.pushChars('D' + chr(len(decMsg)) + decMsg)
+    
+   #     start = sc.GetCurrentTime()
+    
+    #    while True:
+   #       sc.RunTimeRange(100000)    
+    
+    #      if len(rxpin.allCharsReceived) >= 4 and "".join(rxpin.allCharsReceived[-3:]) == "END":
+     #        break
+    
+      #  end = sc.GetCurrentTime()
+    
+       # while rxpin.allCharsReceived[0] == '\x00':
+        #  rxpin.allCharsReceived = rxpin.allCharsReceived[1:]
+        #rxpin.allCharsReceived = rxpin.allCharsReceived[:-3]
+    
+       # print rxpin.allCharsReceived
+       # print "Interval: s", (end - start) / (10.**9)
+
+    ##
+
