@@ -97,9 +97,9 @@ public:
 private:
 	Packet *	pktRx_;
 	Packet *	pktTx_;
-        MacState        rx_state_;      // incoming state (MAC_RECV or MAC_IDLE)
+	MacState        rx_state_;      // incoming state (MAC_RECV or MAC_IDLE)
 	MacState        tx_state_;      // outgoing state
-        int             tx_active_;
+	int             tx_active_;
 	int             fullduplex_mode_;
 	Handler * 	txHandler_;
 	MacSimpleWaitTimer *waitTimer;
@@ -116,7 +116,7 @@ private:
 class MacSimpleTimer: public Handler {
 public:
 	MacSimpleTimer(MacSimple* m) : mac(m) {
-	  busy_ = 0;
+		busy_ = 0;
 	}
 	virtual void handle(Event *e) = 0;
 	virtual void restart(double time);
@@ -139,7 +139,7 @@ protected:
 // Timer to use for delaying the sending of packets
 class MacSimpleWaitTimer: public MacSimpleTimer {
 public: MacSimpleWaitTimer(MacSimple *m) : MacSimpleTimer(m) {}
-	void handle(Event *e);
+void handle(Event *e);
 };
 
 //  Timer to use for finishing sending of packets
@@ -252,12 +252,12 @@ public:
 };
 
 char *base64_encode(const unsigned char *data,
-                    size_t input_length,
-                    size_t *output_length);
+		size_t input_length,
+		size_t *output_length);
 
 unsigned char *base64_decode(const char *data,
-                             size_t input_length,
-                             size_t *output_length);
+		size_t input_length,
+		size_t *output_length);
 
 void build_decoding_table();
 
@@ -271,135 +271,17 @@ private:
 	int bufferSize;
 	MacSimple *macSimple;
 
-	void makeSocketLinger(int fd) {
-	        struct linger ling;
-	        ling.l_onoff=1;
-	        ling.l_linger=30;
-        	setsockopt(fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
-	}
-	
+	void makeSocketLinger(int fd);
+
 public:
 
 	int port;
 
-	SimulAVRClient(MacSimple *mac) {
-		port = 8080;
-		connected = false;
-	
-		bufferSize = 1024;
-		buffer = (char*) malloc(bufferSize);
-
-		macSimple = mac;
-	}
-
-	void sendPacketToEncrypt(Packet *packet) {
-
-		static char* ENCRYPT_CMD = "encrypt\n";
-		char *baseEnc;
-		size_t size;
-		char *ptr;
-		PacketData *pktData;
-
-		if (!connected) return;
-
-		baseEnc = base64_encode(packet->accessdata(), packet->userdata()->size(), &size);
-
-		write(sock, ENCRYPT_CMD, strlen(ENCRYPT_CMD));
-
-		write(sock, baseEnc, size);
-		write(sock, "\n", 1);
-
-		size = read(sock, buffer, bufferSize);
-		buffer[size] = 0;
-
-		ptr = strtok(buffer, "#");
-		fprintf(stderr, "msg = %s\n", ptr);
-
-		baseEnc = (char*) base64_decode(ptr, strlen(ptr), &size);
-		pktData = new PacketData(size);
-		memcpy(pktData->data(), baseEnc, size);
-
-		packet->setdata(pktData);
-
-		ptr = strtok(NULL, "#");
-		fprintf(stderr, "int = %s\n", ptr);
-	}
-
-	void sendPacketToDecrypt(Packet *packet) {
-
-		static char* DECRYPT_CMD = "decrypt\n";
-		char *baseEnc;
-		size_t size;
-		char *ptr;
-		PacketData *pktData;
-
-		if (!connected) return;
-
-		baseEnc = base64_encode(packet->accessdata(), packet->userdata()->size(), &size);
-
-		write(sock, DECRYPT_CMD, strlen(DECRYPT_CMD));
-
-		write(sock, baseEnc, size);
-		write(sock, "\n", 1);
-
-		size = read(sock, buffer, bufferSize);
-		buffer[size] = 0;
-
-		ptr = strtok(buffer, "#");
-		fprintf(stderr, "msg = %s\n", ptr);
-
-		baseEnc = (char*) base64_decode(ptr, strlen(ptr), &size);
-		pktData = new PacketData(size);
-		memcpy(pktData->data(), baseEnc, size);
-
-		packet->setdata(pktData);
-
-		ptr = strtok(NULL, "#");
-		fprintf(stderr, "int = %s\n", ptr);
-	}
-
-	bool connectSock() {
-
-		struct sockaddr_in serv_addr;
-		struct hostent *server;
-
-		if (connected) {
-			return true;
-		}
-
-		sock = socket(AF_INET, SOCK_STREAM, 0);
-
-		if (sock < 0) {
-			return false;
-		}
-
-		server = gethostbyname("localhost");
-		
-		if (server == NULL) {
-			close(sock);
-			fprintf(stderr, "Failed to get host by name\n");
-			return false;
-		}
-
-		bzero((char*) &serv_addr, sizeof(serv_addr));
-
-		serv_addr.sin_family = AF_INET;
-		bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
-		serv_addr.sin_port = htons(port);
-
-		makeSocketLinger(sock);
-
-		if (connect(sock, (const sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
-			close(sock);
-			fprintf(stderr, "Failed to connect to socket\n");
-			return false;
-		}
-
-		connected = true;
-
-		return true;
-
-	}
+	SimulAVRClient(MacSimple *mac);
+	float sendPacketToProcess(Packet *packet, const char *command);
+	float sendPacketToEncrypt(Packet *packet);
+	float sendPacketToDecrypt(Packet *packet);
+	bool connectSock();
 
 };
 

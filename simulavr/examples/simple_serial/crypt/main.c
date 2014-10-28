@@ -1,4 +1,4 @@
- /*
+/*
  ****************************************************************************
  *
  * simple_serial - A demo for the SimulAVR simulator.
@@ -35,120 +35,162 @@
 #include "serial.h"
 
 // AES
+
+#ifdef AES
+
 #include "aes.h"
+#define BLOCK_SIZE 16
+
+#elif RC6
+
+#include "rc5.h"
+#define BLOCK_SIZE 8
+
+#elif XTEA
+
+#include "xtea.h"
+#define BLOCK_SIZE 8
+
+#elif DES
+
+#include "des.h"
+#define BLOCK_SIZE 8
+
+#endif
+
 
 #include <avr/interrupt.h>
+#include <string.h>
 
-void aes256_test(void) {
-    // aes256 is 32 byte key
-    uint8_t key[32] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20, 21,22,23,24,25,26,27,28,29,30,31};
-
-    // aes256 is 16 byte data size
-    uint8_t data[16] = "text to encrypt";
-
-    // declare the context where the round keys are stored
-    aes256_ctx_t ctx;
-
-    // Initialize the AES256 with the desired key
-    aes256_init(key, &ctx);
-
-    // Encrypt data 
-    // "text to encrypt" (ascii) -> '9798D10A63E4E167122C4C07AF49C3A9'(hexa)
-    aes256_enc(data, &ctx);
-
-    // Decrypt data
-    // '9798D10A63E4E167122C4C07AF49C3A9'(hexa) -> "text to encrypt" (ascii)
-    aes256_dec(data, &ctx);
-}
-
-// This is all we need:
 int main (void) {
 
-  uint8_t key[32] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20, 21,22,23,24,25,26,27,28,29,30,31};
-  uint8_t data[16];
-  uint8_t size;
-  uint8_t cmd = 'N'; // N = nop; E = encrypt; D = decrypt
-  uint8_t i, j, k;
+#ifdef AES
+	uint8_t key[32] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20, 21,22,23,24,25,26,27,28,29,30,31};
+#elif RC6
+	uint8_t key[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+#elif XTEA
+	uint8_t key[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+	uint8_t temp[8];
+#elif DES
+	uint8_t key[8] = {0,1,2,3,4,5,6,7};
+	uint8_t temp[8];
+#endif
 
-  data[15] = 0;
+	uint8_t data[BLOCK_SIZE];
+	uint8_t size;
+	uint8_t cmd = 'N'; // N = nop; E = encrypt; D = decrypt
+	uint8_t i, j, k;
 
-  serial_init();
-  sei();
+	data[BLOCK_SIZE - 1] = 0;
 
- aes256_ctx_t ctx;
- aes256_init(key, &ctx);
+	serial_init();
+	sei();
 
-  //serial_writestr_P(PSTR("Hello, world!\n\nNow, please type:\n"));
+#ifdef AES
+	aes256_ctx_t ctx;
+	aes256_init(key, &ctx);
+#elif RC6
+	rc5_ctx_t ctx;
+	rc5_init(key, 128, 20, &ctx);
+#endif
 
-  for (;;) {
+	for (;;) {
 
-    if (serial_rxchars() != 0) {
-      uint8_t c = serial_popchar();
-      //serial_writestr_P(PSTR("received: <"));
+		if (serial_rxchars() != 0) {
+			uint8_t c = serial_popchar();
 
-      if (cmd == 'N') {
-        if (c == 'E' || c == 'D') {
-		cmd = c;
-        }
-      } else if (cmd == 'E') {
-	size = c;
-        i = 0;
-	k = 0;
+			if (cmd == 'N') {
+				if (c == 'E' || c == 'D') {
+					cmd = c;
+				}
+			} else if (cmd == 'E') {
+				size = c;
+				i = 0;
+				k = 0;
 
-        while (k < size) {
-	  if (serial_rxchars() == 0) continue;
-	  uint8_t m = serial_popchar();
-	  data[i] = m;
-	  i++; k++;
+				while (k < size) {
+					if (serial_rxchars() == 0) continue;
+					uint8_t m = serial_popchar();
+					data[i] = m;
+					i++; k++;
 
-          if (i == 15) {
-		data[15] = 0;
-		aes256_enc(data, &ctx);
-		for (j = 0; j < 16; j++) serial_writechar(data[j]);
-		i = 0;
+					if (i == (BLOCK_SIZE - 1)) {
+						data[(BLOCK_SIZE - 1)] = 0;
+#ifdef AES
+						aes256_enc(data, &ctx);
+#elif RC6
+						rc5_enc(data, &ctx);
+#elif XTEA
+						xtea_enc(temp, data, key);
+						memcpy(data, temp, sizeof temp);
+#elif DES
+						des_enc(temp, data, key);
+						memcpy(data, temp, sizeof temp);
+#endif
+						for (j = 0; j < BLOCK_SIZE; j++) serial_writechar(data[j]);
+						i = 0;
 
-          }
-        }
+					}
+				}
 
-	if (i > 0) {
-		for (; i < 15; i++) data[i] = ' ';
-		data[15] = 0;
-		aes256_enc(data, &ctx);
-		for (j = 0; j < 16; j++) serial_writechar(data[j]);
-	}
-	
-	serial_writestr_P(PSTR("END"));
-	
-	cmd = 'N';
+				if (i > 0) {
+					for (; i < (BLOCK_SIZE - 1); i++) data[i] = ' ';
+					data[(BLOCK_SIZE - 1)] = 0;
+#ifdef AES
+					aes256_enc(data, &ctx);
+#elif RC6
+					rc5_enc(data, &ctx);
+#elif XTEA
+					xtea_enc(temp, data, key);
+					memcpy(data, temp, sizeof temp);
+#elif DES
+					des_enc(temp, data, key);
+					memcpy(data, temp, sizeof temp);
+#endif
 
-      } else if (cmd == 'D') {
+					for (j = 0; j < BLOCK_SIZE; j++) serial_writechar(data[j]);
+				}
 
-	size = c;
-        i = 0;
-	k = 0;
+				serial_writestr_P(PSTR("END"));
 
-        while (k < size) {
-		if (serial_rxchars() == 0) continue;
-		uint8_t m = serial_popchar();
-		data[i] = m;
-		i++; k++;
+				cmd = 'N';
 
-		if (i == 16) {
-			aes256_dec(data, &ctx);
-			for (j = 0; j < 15; j++) serial_writechar(data[j]);
-			i = 0;
+			} else if (cmd == 'D') {
+
+				size = c;
+				i = 0;
+				k = 0;
+
+				while (k < size) {
+					if (serial_rxchars() == 0) continue;
+					uint8_t m = serial_popchar();
+					data[i] = m;
+					i++; k++;
+
+					if (i == BLOCK_SIZE) {
+#ifdef AES
+						aes256_dec(data, &ctx);
+#elif RC6
+						rc5_dec(data, &ctx);
+#elif XTEA
+						xtea_dec(temp, data, key);
+						memcpy(data, temp, sizeof temp);
+#elif DES
+						des_dec(temp, data, key);
+						memcpy(data, temp, sizeof temp);
+#endif
+						for (j = 0; j < (BLOCK_SIZE - 1); j++) serial_writechar(data[j]);
+						i = 0;
+					}
+
+				}
+
+				cmd = 'N';
+				serial_writestr_P(PSTR("END"));
+
+			}
+
+
 		}
-
 	}
-
-	cmd = 'N';
-	serial_writestr_P(PSTR("END"));
-
-      }
-      
-      //serial_writechar(c);
-      //serial_writestr_P(PSTR("\n"));
-
-  }
- }
 }

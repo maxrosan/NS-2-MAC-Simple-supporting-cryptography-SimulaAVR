@@ -233,8 +233,7 @@ void MacSimple::recv(Packet *p, Handler *h) {
 
 		if (hdr->num_forwards() == 0) {
 			// calculate delay 
-
-			avrClient->sendPacketToEncrypt(p);
+			delay = (double) avrClient->sendPacketToEncrypt(p);
 		}
 		
 		encryptTimer->schedule(p, delay);
@@ -291,9 +290,6 @@ void MacSimple::recv(Packet *p, Handler *h) {
 			 */
 
 			if (txtime(p) > recvTimer->expire()) {
-
-
-
 				recvTimer->stop();
 				Packet::free(pktRx_);
 				pktRx_ = p;
@@ -402,9 +398,11 @@ void MacSimple::recvHandler()
 		drop(p, DROP_MAC_PACKET_ERROR);
 	
 	} else {
-		fprintf(stderr, "sched\n");
-		avrClient->sendPacketToDecrypt(p); 
-		decryptTimer->schedule(p, 0.2); 
+		double delayToProcessPacket = 0.0;
+
+		delayToProcessPacket = avrClient->sendPacketToDecrypt(p);
+		decryptTimer->schedule(p, delayToProcessPacket);
+
 		uptarget_->recv(p, (Handler*) 0);
 	}
 }
@@ -500,3 +498,110 @@ void MacSimpleRecvTimer::handle(Event *)
 }
  
 
+void SimulAVRClient::makeSocketLinger(int fd) {
+	struct linger ling;
+	ling.l_onoff=1;
+	ling.l_linger=30;
+	setsockopt(fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+}
+
+SimulAVRClient::SimulAVRClient(MacSimple *mac) {
+	port = 8080;
+	connected = false;
+
+	bufferSize = 1024;
+	buffer = (char*) malloc(bufferSize);
+
+	macSimple = mac;
+}
+
+float SimulAVRClient::sendPacketToProcess(Packet *packet, const char *command) {
+	char *baseEnc;
+	size_t size;
+	char *ptr;
+	PacketData *pktData;
+	float interval;
+
+	if (!connected) return 0;
+
+	baseEnc = base64_encode(packet->accessdata(), packet->userdata()->size(), &size);
+
+	write(sock, command, strlen(command));
+
+	write(sock, baseEnc, size);
+	write(sock, "\n", 1);
+
+	size = read(sock, buffer, bufferSize);
+	buffer[size] = 0;
+
+	ptr = strtok(buffer, "#");
+	fprintf(stderr, "msg = %s\n", ptr);
+
+	baseEnc = (char*) base64_decode(ptr, strlen(ptr), &size);
+	pktData = new PacketData(size);
+	memcpy(pktData->data(), baseEnc, size);
+
+	packet->setdata(pktData);
+
+	ptr = strtok(NULL, "#");
+	fprintf(stderr, "int = %s\n", ptr);
+
+	interval = atof(ptr);
+
+	return interval;
+}
+
+float SimulAVRClient::sendPacketToEncrypt(Packet *packet) {
+	static char* ENCRYPT_CMD = "encrypt\n";
+
+	return sendPacketToProcess(packet, ENCRYPT_CMD);
+}
+
+float SimulAVRClient::sendPacketToDecrypt(Packet *packet) {
+	static char* DECRYPT_CMD = "decrypt\n";
+
+	return sendPacketToProcess(packet, DECRYPT_CMD);
+}
+
+bool SimulAVRClient::connectSock() {
+
+	struct sockaddr_in serv_addr;
+	struct hostent *server;
+
+	if (connected) {
+		return true;
+	}
+
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+
+	if (sock < 0) {
+		return false;
+	}
+
+	server = gethostbyname("localhost");
+
+	if (server == NULL) {
+		close(sock);
+		fprintf(stderr, "Failed to get host by name\n");
+		return false;
+	}
+
+	bzero((char*) &serv_addr, sizeof(serv_addr));
+
+	serv_addr.sin_family = AF_INET;
+	bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+	serv_addr.sin_port = htons(port);
+
+	makeSocketLinger(sock);
+
+	if (connect(sock, (const sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
+		close(sock);
+		fprintf(stderr, "Failed to connect to socket\n");
+		return false;
+	}
+
+	connected = true;
+
+	return true;
+
+}
