@@ -19,7 +19,6 @@
 #define _SERIAL_H
 
 #include <stdint.h>
-#include <avr/io.h>
 #include <avr/pgmspace.h>
 
 #define MASK(PIN) (1 << PIN)

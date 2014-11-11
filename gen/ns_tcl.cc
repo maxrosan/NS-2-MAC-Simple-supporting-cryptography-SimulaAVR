@@ -20129,6 +20129,9 @@ Agent/PBC set modulationScheme 0\n\
 \n\
 Agent/MDART set macFailed_ true\n\
 Agent/MDART set etxMetric_ true\n\
+\n\
+Agent/RfidTag set packetSize_ 512\n\
+Agent/RfidReader set packetSize_ 512\n\
 if [TclObject is-class Network/Pcap/Live] {\n\
 Network/Pcap/Live set snaplen_ 4096;# bpf snap len\n\
 Network/Pcap/Live set promisc_ false;\n\

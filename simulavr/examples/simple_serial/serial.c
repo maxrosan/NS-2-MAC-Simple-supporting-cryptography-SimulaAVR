@@ -70,9 +70,11 @@ volatile uint8_t txbuf[BUFSIZE];
  * data = buf[tail++]; tail &= (BUFSIZE - 1);
  */
 
-// initialise serial subsystem
+// initialise serial subsystem ( atmega238 )
 void serial_init() {
   // set up baud generator and interrupts, clear buffers
+
+#if Catmega328
 
   #if BAUD > 38401
     UCSR0A = MASK(U2X0);
@@ -86,7 +88,26 @@ void serial_init() {
   UCSR0C = MASK(UCSZ01) | MASK(UCSZ00);
 
   UCSR0B |= MASK(RXCIE0) | MASK(UDRIE0);
+
+#elif Catmega128
+
+  UBRRH = (unsigned char) (BAUD >> 8);
+  UBRRL = (unsigned char) BAUD;
+  /*
+   Enable receiver and transmitter
+  */
+  UCSRB = (1<<RXEN)|(1<<TXEN);
+
+  /*
+   Set frame format: 8data, 2stop bit
+  */
+  UCSRC = (1<<USBS)|(3<<UCSZ0);  
+
+#endif
+
 }
+
+
 
 // receive interrupt
 // Using the pragma inside the function is incompatible with Arduinos' gcc.
@@ -110,6 +131,7 @@ ISR(USART0_RX_vect) {
     trash = UDR0;
   }
 }
+
 #pragma GCC diagnostic pop
 
 // transmit buffer ready interrupt
@@ -145,6 +167,8 @@ uint8_t serial_popchar() {
 
 // send one character
 void serial_writechar(uint8_t data) {
+
+#if Catmega328
   // check if interrupts are enabled
   if (SREG & MASK(SREG_I)) {
     // if they are, we should be ok to block since the
@@ -160,6 +184,20 @@ void serial_writechar(uint8_t data) {
   }
   // enable TX interrupt so we can send this character
   UCSR0B |= MASK(UDRIE0);
+
+#elif Catmega128
+
+  /*
+  Wait for empty transmit buffer
+  */
+  while( !( UCSRA & (1<<UDRE)) ) ;
+  /*
+  Put data into buffer, sends the data
+  */
+  UDR = data;
+
+#endif
+
 }
 
 // send a string

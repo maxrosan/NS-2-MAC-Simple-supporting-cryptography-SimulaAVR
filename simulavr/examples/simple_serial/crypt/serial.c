@@ -16,6 +16,8 @@
  */
 #include "serial.h"
 
+#include <avr/io.h>
+#include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 
 // Baud rate.
@@ -172,22 +174,10 @@ void serial_writestr(uint8_t *data) {
     serial_writechar(r);
 }
 
-/*
- * Write from FLASH
- *
- * Extensions to output flash memory pointers. This prevents the data to
- * become part of the .data segment instead of the .code segment. That means
- * less memory is consumed for multi-character writes.
- *
- * For single character writes (i.e. '\n' instead of "\n"), using
- * serial_writechar() directly is the better choice.
-*/
 void serial_writestr_P(PGM_P data) {
-  uint8_t r, i = 0;
-
-  // Yes, this is *supposed* to be assignment rather than comparison, so we
-  // break when r is assigned zero.
-  while ((r = pgm_read_byte(&data[i++])))
-    serial_writechar(r);
+	uint8_t r, i = 0;
+	// Yes, this is *supposed* to be assignment rather than comparison, so we
+	// break when r is assigned zero.
+	while ((r = pgm_read_byte(&data[i++])))
+		serial_writechar(r);
 }
-

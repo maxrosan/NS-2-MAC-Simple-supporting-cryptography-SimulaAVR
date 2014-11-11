@@ -14,7 +14,6 @@ DIR+= lib/gf256mul/
 
 # Here C source files
 SRC= $(TARGET).c
-SRC+= serial.c
 
 # Here ASM source files, Make them always end in a capital 'S', ex: asmfile.S
 ASRC = lib/gf256mul/gf256mul.S
@@ -23,7 +22,7 @@ ASRC = lib/gf256mul/gf256mul.S
 F_CPU=16000000
 
 # Microcontroller to be used
-MCU=atmega328
+MCU=atmega128
 
 # Optimization 1, 2, 3 and s for size
 OPT = s
@@ -33,9 +32,24 @@ OPT = s
 # Here we add the prefix -I for the compiler ex: '-I ../dir/subdir/'
 
 # Compiler C flags
-CFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU)UL -O$(OPT) -ffunction-sections
+CFLAGS = -mmcu=$(MCU) -DC$(MCU) -DF_CPU=$(F_CPU)UL -O$(OPT) -ffunction-sections
+CFLAGS += -Wl,--section-start=.siminfo=0x900000
+
 LDFLAGS = -lm 
 DIR = .
+
+ifeq ($(MCU), atmega328)
+
+	SRC+= serial.c
+
+else ifeq ($(MCU), atmega128)
+	
+	SRC+= avr-uart/uart.c
+	SRC+= serial_atmega128.c
+	
+	DIR+= avr-uart/
+
+endif
 
 ifeq ($(ALGORITHM), AES)
 

@@ -1590,3 +1590,6 @@ Agent/PBC set modulationScheme 0
 
 Agent/MDART set macFailed_ true
 Agent/MDART set etxMetric_ true
+
+Agent/RfidTag set packetSize_ 512
+Agent/RfidReader set packetSize_ 512
