@@ -162,7 +162,8 @@ set protolist {
 # Application-Layer Protocols:
 	Message # a protocol to carry text messages
 	Ping 	# Ping
-    PBC     # PBC
+        PBC     # PBC
+	RfidPacket #Pacote RFID
 # Wireless:
 	ARP 	# Address Resolution Protocol, network wireless stack
 	GAF 	# Geographic Adaptive Delity, for ad-hoc networks

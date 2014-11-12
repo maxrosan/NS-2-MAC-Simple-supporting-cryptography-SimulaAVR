@@ -29,10 +29,48 @@ RfidReadAgent::RfidReadAgent() : Agent(PT_RFID) {
 	state = READER_IDLE;
 }
 
+void RfidReadAgent::recvTagResponse(Packet *pkt) {
+
+	TagRecognized tagRecognized;
+	RfidReadRemoveIfCollided removeCollided;
+
+	hdr_ip* hdrip = hdr_ip::access(pkt);
+	hdr_rfid* hdr = hdr_rfid::access(pkt);
+
+	if (currentSlot > hdr->slotChosen) {
+		return;
+	}
+
+	removeCollided.slot = hdr->slotChosen;
+
+	if (std::find_if(tagsRecognized.begin(), tagsRecognized.end(), removeCollided)
+		!= tagsRecognized.end()) {
+		tagsRecognized.remove_if(removeCollided);
+		return;
+	}
+
+	tagRecognized.tagID = hdr->tagID;
+	tagRecognized.battery = hdr->tagStatus.battery;
+	tagRecognized.slot = hdr->slotChosen;
+
+	tagsRecognized.push_back(tagRecognized);
+
+	currentSlot = hdr->slotChosen;
+}
+
 void RfidReadAgent::recv(Packet *pkt, Handler *h) {
 
-//	hdr_ip* hdrip = hdr_ip::access(pkt);
-//	hdr_rfid* hdr = hdr_rfid::access(pkt);
+	hdr_ip* hdrip = hdr_ip::access(pkt);
+	hdr_rfid* hdr = hdr_rfid::access(pkt);
+
+	if (state == READER_WINDOW && hdrip->daddr() == here_.addr_) {
+
+		if (hdr->tagStatus.modeField == P2P_COMMAND && // mode field
+			hdr->tagStatus.ack == ACK_VALUE) { // ack
+			recvTagResponse(pkt);
+		}
+
+	}
 
 }
 
@@ -69,6 +107,8 @@ void RfidReadAgent::sendCollection() {
 	hdr_ip* ipHeader = HDR_IP(pkt);
 	hdr_rfid *rfidHeader = hdr_rfid::access(pkt);
 
+	fprintf(stderr, "Sending collection\n");
+
 	memset(rfidHeader, 0, sizeof(hdr_rfid));
 
 	rfidHeader->commandPrefix = 31;
@@ -85,8 +125,11 @@ void RfidReadAgent::sendCollection() {
     ipHeader->sport() = here_.port_;
 
     state = READER_WINDOW;
+    currentSlot = 0;
 
     windowTimer->schedule(((double) windowSize) * 1e-3);
+
+    tagsRecognized.clear();
 
     send(pkt, (Handler*) 0);
 }
@@ -94,5 +137,13 @@ void RfidReadAgent::sendCollection() {
 void RfidReadAgent::endOfWindow() {
 
 	state = READER_SENDING_SLEEP;
+
+	std::list<TagRecognized>::const_iterator it = tagsRecognized.begin();
+
+	for (; it != tagsRecognized.end(); it++) {
+		fprintf(stderr, "tag recognized = %u %u\n", it->tagID, it->slot);
+	}
+
+	tagsRecognized.clear();
 
 }

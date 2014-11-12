@@ -47,17 +47,6 @@
 #ifndef ns_mac_simple_h
 #define ns_mac_simple_h
 
-#include <queue>
-#include <algorithm>
-#include <sys/types.h> 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <cstring>
-#include <cstdlib>
-#include <cstdio>
-#include <unistd.h>
-#include <netdb.h>
-
 // Added by Sushmita to support event tracing (singal@nunki.usc.edu)
 #include "address.h"
 #include "ip.h"
@@ -65,9 +54,6 @@
 class MacSimpleWaitTimer;
 class MacSimpleSendTimer;
 class MacSimpleRecvTimer;
-class MacSimpleDecryptTimer;
-class MacSimpleEncryptTimer;
-class SimulAVRClient;
 
 // Added by Sushmita to support event tracing (singal@nunki.usc.edu)
 class EventTrace;
@@ -85,28 +71,23 @@ public:
 	void sendHandler(void);
 	void recvHandler(void);
 	double txtime(Packet *p);
-	void recvUp(void);
 
 	// Added by Sushmita to support event tracing (singal@nunki.usc.edu)
 	void trace_event(char *, Packet *);
 	int command(int, const char*const*);
 	EventTrace *et_;
 
-	EnergyModel* em() { return netif_->node()->energy_model(); }
-
 private:
 	Packet *	pktRx_;
 	Packet *	pktTx_;
-	MacState        rx_state_;      // incoming state (MAC_RECV or MAC_IDLE)
+        MacState        rx_state_;      // incoming state (MAC_RECV or MAC_IDLE)
 	MacState        tx_state_;      // outgoing state
-	int             tx_active_;
+        int             tx_active_;
 	int             fullduplex_mode_;
 	Handler * 	txHandler_;
 	MacSimpleWaitTimer *waitTimer;
 	MacSimpleSendTimer *sendTimer;
 	MacSimpleRecvTimer *recvTimer;
-	MacSimpleDecryptTimer *decryptTimer;
-	MacSimpleEncryptTimer *encryptTimer;	
 
 	int busy_ ;
 
@@ -116,7 +97,7 @@ private:
 class MacSimpleTimer: public Handler {
 public:
 	MacSimpleTimer(MacSimple* m) : mac(m) {
-		busy_ = 0;
+	  busy_ = 0;
 	}
 	virtual void handle(Event *e) = 0;
 	virtual void restart(double time);
@@ -139,7 +120,7 @@ protected:
 // Timer to use for delaying the sending of packets
 class MacSimpleWaitTimer: public MacSimpleTimer {
 public: MacSimpleWaitTimer(MacSimple *m) : MacSimpleTimer(m) {}
-void handle(Event *e);
+	void handle(Event *e);
 };
 
 //  Timer to use for finishing sending of packets
@@ -149,101 +130,6 @@ public:
 	void handle(Event *e);
 };
 
-class MacSimpleDecryptTimer: public Handler {
-private:
-	bool busy;
-	std::queue<std::pair<Packet*, double> > pkts;
-	Packet *mainPkt;
-public:
-
-	MacSimpleDecryptTimer(MacSimple *m) {
-		this->macSimple = m;
-		busy = false;
-		mainPkt = NULL;
-	}
-
-	virtual void handle(Event *e) {
-
-		Scheduler &sched = Scheduler::instance();
-		printf("X = %lf %x\n", sched.clock(), mainPkt);
-
-		if (pkts.size() == 0) {
-			busy = false;
-			mainPkt = NULL;
-		} else {
-			mainPkt = pkts.front().first;
-			sched.schedule(this, &intr, pkts.front().second);
-			pkts.pop();
-		}
-	}
-
-	void schedule(Packet *pkt, double delay) {
-
-		Scheduler &sched = Scheduler::instance();
-
-		printf("Y = %lf\n", sched.clock());
-
-		if (!busy) {
-			busy = true;
-			mainPkt = pkt;
-			sched.schedule(this, &intr, delay);
-		} else {
-			pkts.push(std::make_pair(pkt, delay));
-		}
-	}
-
-	Event intr;
-	MacSimple *macSimple;
-
-};
-
-class MacSimpleEncryptTimer: public Handler {
-private:
-	bool busy;
-	std::queue<std::pair<Packet*, double> > pkts;
-	Packet *mainPkt;
-public:
-
-	MacSimpleEncryptTimer(MacSimple *m) {
-		this->macSimple = m;
-		busy = false;
-		mainPkt = NULL;
-	}
-
-	virtual void handle(Event *e) {
-
-		Scheduler &sched = Scheduler::instance();
-
-		printf("Encrypt\n");
-
-		if (pkts.size() == 0) {
-			busy = false;
-			mainPkt = NULL;
-		} else {
-			mainPkt = pkts.front().first;
-			sched.schedule(this, &intr, pkts.front().second);
-			pkts.pop();
-		}
-	}
-
-	void schedule(Packet *pkt, double delay) {
-
-		Scheduler &sched = Scheduler::instance();
-
-		if (!busy) {
-			busy = true;
-			mainPkt = pkt;
-			sched.schedule(this, &intr, delay);
-		} else {
-			pkts.push(std::make_pair(pkt, delay));
-		}
-	}
-
-	Event intr;
-	MacSimple *macSimple;
-
-};
-
 // Timer to use for finishing reception of packets
 class MacSimpleRecvTimer: public MacSimpleTimer {
 public:
@@ -251,39 +137,6 @@ public:
 	void handle(Event *e);
 };
 
-char *base64_encode(const unsigned char *data,
-		size_t input_length,
-		size_t *output_length);
-
-unsigned char *base64_decode(const char *data,
-		size_t input_length,
-		size_t *output_length);
-
-void build_decoding_table();
-
-void base64_cleanup();
-
-class SimulAVRClient {
-private:
-	int sock;
-	bool connected;
-	char *buffer;
-	int bufferSize;
-	MacSimple *macSimple;
-
-	void makeSocketLinger(int fd);
-
-public:
-
-	int port;
-
-	SimulAVRClient(MacSimple *mac);
-	float sendPacketToProcess(Packet *packet, const char *command);
-	float sendPacketToEncrypt(Packet *packet);
-	float sendPacketToDecrypt(Packet *packet);
-	bool connectSock();
-
-};
 
 
 #endif

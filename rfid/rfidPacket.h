@@ -12,14 +12,20 @@
 
 #include <stdint.h>
 
-	struct hdr_rfid {
+struct hdr_rfid {
 
-	uint16_t tagStatus;
+	struct {
+		unsigned char modeField : 4;
+		unsigned char ack : 1;
+		unsigned char tagType : 3;
+		unsigned char battery : 1;
+		unsigned char reserved : 7;
+	} tagStatus;
+
 	uint8_t messageLength;
 	uint8_t intID;
 	uint32_t tagID;
 	uint32_t ownerID;
-	char data[256];
 	uint16_t CRC;
 
 	uint8_t commandPrefix;
@@ -28,6 +34,7 @@
 	uint8_t interrogatorID;
 	uint16_t windowSize;
 	uint16_t numberOfSlots;
+	uint16_t slotChosen;
 
 	// Header access methods
 	static int offset_; // required by PacketHeaderManager

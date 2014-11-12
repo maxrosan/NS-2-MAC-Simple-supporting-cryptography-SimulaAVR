@@ -55,99 +55,6 @@
 
 #include "cmu-trace.h"
 
-static SimulAVRClient *avrClient = NULL;
-
-static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-                                'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-                                'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-                                'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-                                'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-                                'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-                                'w', 'x', 'y', 'z', '0', '1', '2', '3',
-                                '4', '5', '6', '7', '8', '9', '+', '/'};
-static char *decoding_table = NULL;
-static int mod_table[] = {0, 2, 1};
-
- 
-char *base64_encode(const unsigned char *data,
-                    size_t input_length,
-                    size_t *output_length) {
-
-    *output_length = 4 * ((input_length + 2) / 3);
-  
-    char *encoded_data = (char*) malloc(*output_length);
-    if (encoded_data == NULL) return NULL;
-  
-    for (int i = 0, j = 0; i < input_length;) {
-
-        uint32_t octet_a = i < input_length ? (unsigned char)data[i++] : 0;
-        uint32_t octet_b = i < input_length ? (unsigned char)data[i++] : 0;
-        uint32_t octet_c = i < input_length ? (unsigned char)data[i++] : 0;
-
-        uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
-    
-        encoded_data[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
-        encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
-        encoded_data[j++] = encoding_table[(triple >> 1 * 6) & 0x3F];
-        encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
-    }
-
-    for (int i = 0; i < mod_table[input_length % 3]; i++)
-        encoded_data[*output_length - 1 - i] = '=';
-
-    return encoded_data;
-}
-
-
-unsigned char *base64_decode(const char *data,
-                             size_t input_length,
-                             size_t *output_length) {
-
-    if (decoding_table == NULL) build_decoding_table();
-
-    if (input_length % 4 != 0) return NULL;
-
-    *output_length = input_length / 4 * 3;
-    if (data[input_length - 1] == '=') (*output_length)--;
-    if (data[input_length - 2] == '=') (*output_length)--;
-
-    unsigned char *decoded_data = (unsigned char*) malloc(*output_length);
-    if (decoded_data == NULL) return NULL;
-
-    for (int i = 0, j = 0; i < input_length;) {
-
-        uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-        uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-        uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-        uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-
-        uint32_t triple = (sextet_a << 3 * 6)
-        + (sextet_b << 2 * 6)
-        + (sextet_c << 1 * 6)
-        + (sextet_d << 0 * 6);
-
-        if (j < *output_length) decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
-        if (j < *output_length) decoded_data[j++] = (triple >> 1 * 8) & 0xFF;
-        if (j < *output_length) decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
-    }
-
-    return decoded_data;
-}
-
-
-void build_decoding_table() {
-
-    decoding_table = (char*) malloc(256);
-
-    for (int i = 0; i < 64; i++)
-        decoding_table[(unsigned char) encoding_table[i]] = i;
-}
-
-
-void base64_cleanup() {
-    free(decoding_table);
-}
-
 static class MacSimpleClass : public TclClass {
 public:
 	MacSimpleClass() : TclClass("Mac/Simple") {}
@@ -172,7 +79,7 @@ void MacSimple::trace_event(char *eventtype, Packet *p)
 
 	if (wrk != 0) 
 	{
-		sprintf(wrk, "E -t "TIME_FORMAT" %s %s %s", 
+		sprintf(wrk, "E -t "TIME_FORMAT" %s %s %s",
 			et_->round(Scheduler::instance().clock()),
 			eventtype,
 			src_nodeaddr,
@@ -195,19 +102,10 @@ MacSimple::MacSimple() : Mac() {
 	waitTimer = new MacSimpleWaitTimer(this);
 	sendTimer = new MacSimpleSendTimer(this);
 	recvTimer = new MacSimpleRecvTimer(this);
-	decryptTimer = new MacSimpleDecryptTimer(this);
-	encryptTimer = new MacSimpleEncryptTimer(this);
-	
 	// Added by Sushmita to support event tracing (singal@nunki.usc.edu)
 	et_ = new EventTrace();
 	busy_ = 0;
 	bind("fullduplex_mode_", &fullduplex_mode_);
-
-	if (avrClient == NULL) {
-		avrClient = new SimulAVRClient(this);
-		avrClient->connectSock();
-	}
-
 }
 
 // Added by Sushmita to support event tracing (singal@nunki.usc.edu)
@@ -228,17 +126,7 @@ void MacSimple::recv(Packet *p, Handler *h) {
 	struct hdr_cmn *hdr = HDR_CMN(p);
 	/* let MacSimple::send handle the outgoing packets */
 	if (hdr->direction() == hdr_cmn::DOWN) {
-		// schedule to encrypt
-		double delay = 0;
-
-		if (hdr->num_forwards() == 0) {
-			// calculate delay 
-			delay = (double) avrClient->sendPacketToEncrypt(p);
-		}
-		
-		encryptTimer->schedule(p, delay);
-
-		send(p,h); // must comment here
+		send(p,h);
 		return;
 	}
 
@@ -255,7 +143,7 @@ void MacSimple::recv(Packet *p, Handler *h) {
 		hdr->error() = 1;
 
 	}
- 
+
 	/*
 	 * check to see if we're already receiving a different packet
 	 */
@@ -268,8 +156,6 @@ void MacSimple::recv(Packet *p, Handler *h) {
 		rx_state_ = MAC_RECV;
 		pktRx_ = p;
 		/* schedule reception of the packet */
-
-
 		recvTimer->start(txtime(p));
 	} else {
 		/*
@@ -359,11 +245,6 @@ void MacSimple::send(Packet *p, Handler *h)
 }
 
 
-void MacSimple::recvUp()
-{
-
-}
-
 void MacSimple::recvHandler()
 {
 	hdr_cmn *ch = HDR_CMN(pktRx_);
@@ -398,17 +279,12 @@ void MacSimple::recvHandler()
 		drop(p, DROP_MAC_PACKET_ERROR);
 	
 	} else {
-		double delayToProcessPacket = 0.0;
-
-		delayToProcessPacket = avrClient->sendPacketToDecrypt(p);
-		decryptTimer->schedule(p, delayToProcessPacket);
-
 		uptarget_->recv(p, (Handler*) 0);
 	}
 }
 
 void MacSimple::waitHandler()
-{ 
+{
 	tx_state_ = MAC_SEND;
 	tx_active_ = 1;
 
@@ -436,7 +312,7 @@ void MacSimple::sendHandler()
 
 
 
- //  Timers
+//  Timers
 
 void MacSimpleTimer::restart(double time)
 {
@@ -450,9 +326,9 @@ void MacSimpleTimer::restart(double time)
 void MacSimpleTimer::start(double time)
 {
 	Scheduler &s = Scheduler::instance();
- 
+
 	assert(busy_ == 0);
- 	
+	
 	busy_ = 1;
 	stime = s.clock();
 	rtime = time;
@@ -479,7 +355,7 @@ void MacSimpleWaitTimer::handle(Event *)
 	stime = rtime = 0.0;
 
 	mac->waitHandler();
-} 
+}
 
 void MacSimpleSendTimer::handle(Event *)
 {
@@ -496,112 +372,5 @@ void MacSimpleRecvTimer::handle(Event *)
 
 	mac->recvHandler();
 }
- 
 
-void SimulAVRClient::makeSocketLinger(int fd) {
-	struct linger ling;
-	ling.l_onoff=1;
-	ling.l_linger=30;
-	setsockopt(fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
-}
 
-SimulAVRClient::SimulAVRClient(MacSimple *mac) {
-	port = 8080;
-	connected = false;
-
-	bufferSize = 1024;
-	buffer = (char*) malloc(bufferSize);
-
-	macSimple = mac;
-}
-
-float SimulAVRClient::sendPacketToProcess(Packet *packet, const char *command) {
-	char *baseEnc;
-	size_t size;
-	char *ptr;
-	PacketData *pktData;
-	float interval;
-
-	if (!connected) return 0;
-
-	baseEnc = base64_encode(packet->accessdata(), packet->userdata()->size(), &size);
-
-	write(sock, command, strlen(command));
-
-	write(sock, baseEnc, size);
-	write(sock, "\n", 1);
-
-	size = read(sock, buffer, bufferSize);
-	buffer[size] = 0;
-
-	ptr = strtok(buffer, "#");
-	fprintf(stderr, "msg = %s\n", ptr);
-
-	baseEnc = (char*) base64_decode(ptr, strlen(ptr), &size);
-	pktData = new PacketData(size);
-	memcpy(pktData->data(), baseEnc, size);
-
-	packet->setdata(pktData);
-
-	ptr = strtok(NULL, "#");
-	fprintf(stderr, "int = %s\n", ptr);
-
-	interval = atof(ptr);
-
-	return interval;
-}
-
-float SimulAVRClient::sendPacketToEncrypt(Packet *packet) {
-	static char* ENCRYPT_CMD = "encrypt\n";
-
-	return sendPacketToProcess(packet, ENCRYPT_CMD);
-}
-
-float SimulAVRClient::sendPacketToDecrypt(Packet *packet) {
-	static char* DECRYPT_CMD = "decrypt\n";
-
-	return sendPacketToProcess(packet, DECRYPT_CMD);
-}
-
-bool SimulAVRClient::connectSock() {
-
-	struct sockaddr_in serv_addr;
-	struct hostent *server;
-
-	if (connected) {
-		return true;
-	}
-
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-
-	if (sock < 0) {
-		return false;
-	}
-
-	server = gethostbyname("localhost");
-
-	if (server == NULL) {
-		close(sock);
-		fprintf(stderr, "Failed to get host by name\n");
-		return false;
-	}
-
-	bzero((char*) &serv_addr, sizeof(serv_addr));
-
-	serv_addr.sin_family = AF_INET;
-	bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
-	serv_addr.sin_port = htons(port);
-
-	makeSocketLinger(sock);
-
-	if (connect(sock, (const sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
-		close(sock);
-		fprintf(stderr, "Failed to connect to socket\n");
-		return false;
-	}
-
-	connected = true;
-
-	return true;
-
-}

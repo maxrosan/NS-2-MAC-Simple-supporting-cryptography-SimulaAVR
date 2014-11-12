@@ -12,27 +12,33 @@
 #include "address.h"
 #include "ip.h"
 
+#include "rfidCommon.h"
 #include "rfidPacket.h"
 
 class CollectResponseTimer;
+
+enum { TAG_IDLE, TAG_WAITING_SLOT };
 
 class RfidTagAgent : public Agent {
 public:
 	RfidTagAgent();
 	int command(int argc, const char*const* argv);
 	virtual void recv(Packet*, Handler*);
-	void responseCollect(hdr_rfid *hdr);
+	void responseCollect(Packet *packet, hdr_rfid *hdr, int slot);
 protected:
 	uint16_t tagID;
 	CollectResponseTimer *collectResponseTimer;
+	int state;
 
-	void collectId(hdr_rfid *hdr);
+	void collectId(Packet *p, hdr_rfid *hdr);
 };
 
 class CollectResponseTimer: public Handler {
 private:
 	RfidTagAgent *tag;
 	hdr_rfid *hdr;
+	Packet *pack;
+	int slot;
 public:
 
 	Event intr;
@@ -43,13 +49,15 @@ public:
 	}
 
 	virtual void handle(Event *e) {
-		tag->responseCollect(hdr);
+		tag->responseCollect(pack, hdr, slot);
 	}
 
-	void schedule(hdr_rfid *hdr, double delay) {
+	void schedule(Packet *p, hdr_rfid *hdr, int slot, double delay) {
 		Scheduler &sched = Scheduler::instance();
 
 		this->hdr = hdr;
+		this->pack = p;
+		this->slot = slot;
 		sched.schedule(this, &intr, delay);
 	}
 
