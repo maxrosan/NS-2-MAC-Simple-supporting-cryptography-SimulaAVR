@@ -7,11 +7,12 @@ set val(ifq) Queue/DropTail/PriQueue ;# interface queue type
 set val(ll) LL ;# link layer type
 set val(ant) Antenna/OmniAntenna ;# antenna model
 set val(ifqlen) 1000 ;# max packet in ifq
+set val(nReaders) 2
 set val(nn) 50 ;# number of mobilenodes
 set val(rp) DumbAgent ;# routing protocol
 #set val(rp) DSDV ;# routing protocol
-set val(x) 30 ;# X dimension of topography
-set val(y) 30 ;# Y dimension of topography
+set val(x) 100 ;# X dimension of topography
+set val(y) 100 ;# Y dimension of topography
 set val(stop) 1000 ;# time of simulation end
 
 #Create a simulator object
@@ -103,54 +104,65 @@ $rng3 seed 0
 
 #defining connections
 
-set reader1 [new Agent/RfidReader]
-$ns attach-agent $n(0) $reader1
+for {set i 0} { $i < $val(nReaders) } { incr i } {
+	set reader($i) [new Agent/RfidReader]
+	$ns attach-agent $n($i) $reader($i)
+}
 #$ns initial_node_pos $n(0) 20
 
-for {set i 1} {$i < $val(nn) } { incr i } {
+for {set i $val(nReaders)} { $i < $val(nn) } { incr i } {
 
-    set tag($i) [new Agent/RfidTag]
+	set tag($i) [new Agent/RfidTag]
 
-    $ns attach-agent $n($i) $tag($i)
-    $ns connect $reader1 $tag($i)
-#    $ns initial_node_pos $n($i) 20
+	$ns attach-agent $n($i) $tag($i)
 
-#    $ns random-motion 0 $n($i)
-
-#    $n($i) set X_ [$rng1 uniform 0 30]
-#    $n($i) set Y_ [$rng2 uniform 0 30]
-    #puts "[$rng2 uniform 0 20]"
-#    $n($i) set Z_ 1
-
-#    $tag($i) set tagEPC_ [expr $i*10]
-#    $tag($i) set time_ 1
-#    $tag($i) set messages_ 0
-#    $tag($i) set seed_ [$rng2 uniform 10 1000]
+	for {set j 0} {$j < $val(nReaders) } { incr j } {
+		$ns connect $reader($j) $tag($i)
+	}
 }
 
 # Define node initial position in nam
-$ns initial_node_pos $n(0) 8
-
-$n(0) set X_ 15
-$n(0) set Y_ 15
-$n(0) set Z_ 2
 
 set now [$ns now]
 
-for {set i 1} {$i < $val(nn)} { incr i } {
+for {set i 0} {$i < $val(nReaders)} { incr i } {
+
+	$ns initial_node_pos $n($i) 8
+
+	set xx [$rng1 uniform 0 $val(x)]
+	set yy [$rng2 uniform 0 $val(y)]
+
+	$ns at $now "$n($i) set X_ $xx"
+	$ns at $now "$n($i) set Y_ $yy"
+	$ns at $now "$n($i) set Z_ 2"
+
+	$ns at $now "$n($i) setdest $xx $yy 2"
+}
+
+for {set i $val(nReaders)} {$i < $val(nn)} { incr i } {
 	$ns initial_node_pos $n($i) 5
 
-	set xx [$rng1 uniform 0 5]
-	set yy [$rng2 uniform 0 5]
-
-	set dxx [$rng1 uniform 0 15]
-	set dyy [$rng2 uniform 0 15]
+	set xx [$rng1 uniform 0 $val(x)]
+	set yy [$rng2 uniform 0 $val(y)]
 
 	$ns at $now "$n($i) set X_ $xx"
 	$ns at $now "$n($i) set Y_ $yy"
 	$ns at $now "$n($i) set Z_ 1"
 
-	$ns at $now "$n($i) setdest $dxx $dyy 1"
+	$ns at $now "$n($i) setdest $xx $yy 1"
+}
+
+# dynamic destination setting procedure..
+for {set i 0} {$i < $val(stop)} { incr i 40} {
+	$ns at $i "destination"
+}
+
+for {set i 0} {$i < $val(nReaders)} { incr i } {
+	$ns at 0.0 "$reader($i) start"
+}
+
+for {set i $val(nReaders)} {$i < $val(nn)} { incr i} {
+	$ns at 0.0 "$tag($i) start"
 }
 
 proc destination {} {
@@ -159,32 +171,11 @@ proc destination {} {
 
 	set now [$ns now]
 
-	for {set i 1} {$i < $val(nn)} { incr i } {
-		set dxx [$rng1 uniform 0 30]
-		set dyy [$rng2 uniform 0 30]
+	for {set i $val(nReaders)} {$i < $val(nn)} { incr i } {
+		set dxx [$rng1 uniform 0 $val(x)]
+		set dyy [$rng2 uniform 0 $val(y)]
 		$ns at $now "$n($i) setdest $dxx $dyy 1"
 	}
-}
-
-# dynamic destination setting procedure..
-for {set i 0} {$i < $val(stop)} { incr i 40} {
-	$ns at $i "destination"
-}
-#for {set i 1} {$i < $val(stop) } { incr i 10} {
-#        $ns at $i "destination"
-#}
-
-
-#$ns attach-agent $n(0) $reader1
-#
-for {set i 1} {$i < $val(nn) } { incr i } {
-        $ns connect $reader1 $tag($i)
-}
-
-$ns at 0.0 "$reader1 start"
-
-for {set i 1} {$i < $val(nn)} { incr i} {
-	$ns at 0.0 "$tag($i) start"
 }
 
 
