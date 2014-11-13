@@ -4,6 +4,13 @@
 #include <cstdlib>
 #include <ctime>
 
+#define ATMEGA328P_SUPPLY 5.0 // V
+#define ATMEGA328P_LOW_FREQ_Icc (0.9 * 1e-3) // amp (1 Mhz)
+#define ATMEGA328P_FUL_FREQ_Icc (10.0 * 1e-3) // amp ( 16 Mhz )
+
+#define INTERVAL_TO_BE_SCANNED_AGAIN 3
+#define INTERVAL_TO_TRY_SLEEP_AGAIN 5
+
 static class RfidTagClass : public TclClass {
 public:
 	RfidTagClass() : TclClass("Agent/RfidTag") {}
@@ -17,8 +24,23 @@ RfidTagAgent::RfidTagAgent() : Agent(PT_RFID) {
 	tagID = rand();
 	collectResponseTimer = new CollectResponseTimer(this);
 	state = TAG_IDLE;
+	wakeUpTimer = new TagWakeUpTimer(this);
+	sleepTimer = new TagSleepTimer(this);
+	waitWindow = new TagWaitWindow(this);
+
+	commandsMap["start"] = &RfidTagAgent::start;
 
 	bind("packetSize_", &size_);
+
+}
+
+void RfidTagAgent::consume(double energy) {
+
+	if (em() == NULL) {
+		return;
+	}
+
+	em()->setenergy(em()->energy() - energy);
 
 }
 
@@ -53,7 +75,17 @@ void RfidTagAgent::collectId(Packet *p, hdr_rfid *hdr) {
 
 	state = TAG_WAITING_SLOT;
 
+	if (em()) {
+		em()->set_node_sleep(1);
+	}
+
+	delete collectResponseTimer;
+	collectResponseTimer = new CollectResponseTimer(this);
 	collectResponseTimer->schedule(p, hdr, slotChosen, delay);
+
+	delete waitWindow;
+	waitWindow = new TagWaitWindow(this);
+	waitWindow->schedule(windowSize);
 
 }
 
@@ -65,7 +97,11 @@ void RfidTagAgent::responseCollect(Packet *packet, hdr_rfid *hdr, int slot) {
 	hdr_ip* ipHeader = HDR_IP(pkt);
 	hdr_rfid *rfidHeader = hdr_rfid::access(pkt);
 
-	state = TAG_IDLE;
+	if (em()) {
+		em()->set_node_sleep(0);
+	}
+
+	state = TAG_WAITING_WINDOW;
 
 	memset(rfidHeader, 0, sizeof(hdr_rfid));
 
@@ -89,6 +125,32 @@ void RfidTagAgent::responseCollect(Packet *packet, hdr_rfid *hdr, int slot) {
 
 	send(pkt, (Handler*) 0);
 
+	Packet::free(packet);
+
+}
+
+void RfidTagAgent::sleep(Packet *pkt, hdr_rfid *hdr) {
+
+	hdr_rfid *rfidHeader = hdr_rfid::access(pkt);
+
+	if (rfidHeader->tagID != tagID) {
+		return;
+	}
+
+	state = TAG_SLEEPING;
+
+	if (em()) {
+		em()->set_node_sleep(1);
+	}
+
+	fprintf(stderr, "Tag [%u] sleep\n", rfidHeader->tagID);
+
+	delete wakeUpTimer;
+	wakeUpTimer = new TagWakeUpTimer(this);
+	wakeUpTimer->schedule(INTERVAL_TO_BE_SCANNED_AGAIN);
+
+	Packet::free(pkt);
+
 }
 
 void RfidTagAgent::recv(Packet *pkt, Handler *h) {
@@ -96,7 +158,10 @@ void RfidTagAgent::recv(Packet *pkt, Handler *h) {
 	hdr_ip* hdrip = hdr_ip::access(pkt);
 	hdr_rfid* hdr = hdr_rfid::access(pkt);
 
-	fprintf(stderr, "Reader [%u] identified\n", hdrip->saddr());
+	if (state != TAG_IDLE) {
+		Packet::free(pkt);
+		return;
+	}
 
 	if (hdrip->daddr() == IP_BROADCAST) {
 
@@ -105,6 +170,8 @@ void RfidTagAgent::recv(Packet *pkt, Handler *h) {
 			switch (hdr->commandCode) {
 			case 10:
 				collectId(pkt, hdr); break;
+			case 15:
+				sleep(pkt, hdr); break;
 			}
 		}
 
@@ -113,5 +180,75 @@ void RfidTagAgent::recv(Packet *pkt, Handler *h) {
 }
 
 int RfidTagAgent::command(int argc, const char*const* argv) {
+
+	if (argc > 1) {
+		std::string nameCommand = std::string(argv[1]);
+		pointer_map::const_iterator it = commandsMap.find(nameCommand);
+
+		if (it != commandsMap.end()) {
+			funcCall call = it->second;
+			return (this->*call)(argc, argv);
+		} else {
+
+			fprintf(stderr, "Command %s not found\n", argv[1]);
+
+		}
+
+	}
+
 	return (Agent::command(argc, argv));
+}
+
+void RfidTagAgent::wakeUp() {
+
+	if (state != TAG_SLEEPING) return;
+
+	state = TAG_IDLE;
+
+	if (em()) {
+		em()->set_node_sleep(0);
+	}
+
+}
+
+void RfidTagAgent::tryToSleep() {
+
+	if (state == TAG_IDLE) {
+		state = TAG_SLEEPING;
+
+		if (em()) {
+			em()->set_node_sleep(1);
+			delete wakeUpTimer;
+			wakeUpTimer = new TagWakeUpTimer(this);
+			wakeUpTimer->schedule(INTERVAL_TO_BE_SCANNED_AGAIN);
+			//sleepTimer->schedule(INTERVAL_TO_TRY_SLEEP_AGAIN + INTERVAL_TO_BE_SCANNED_AGAIN);
+			sleepTimer->resched(INTERVAL_TO_TRY_SLEEP_AGAIN + INTERVAL_TO_BE_SCANNED_AGAIN);
+			fprintf(stderr, "Tag %u sleeping\n", tagID);
+		}
+	}
+}
+
+
+int RfidTagAgent::start(int argc, const char* const* argv) {
+
+	//wakeUp();
+
+	state = TAG_IDLE;
+	//sleepTimer->schedule(INTERVAL_TO_TRY_SLEEP_AGAIN);
+	sleepTimer->resched(INTERVAL_TO_TRY_SLEEP_AGAIN);
+
+	return (TCL_OK);
+}
+
+void RfidTagAgent::waitWindowCall() {
+	state = TAG_IDLE;
+	em()->set_node_sleep(0);
+	sleepTimer->resched(INTERVAL_TO_TRY_SLEEP_AGAIN);
+
+	//Tcl& tcl=Tcl::instance();
+	//tcl.evalf("%s delete-mark m2", Node::get_node_by_address(addr())->name());
+	//sleepTimer->schedule(5);
+
+	Tcl& tcl=Tcl::instance();
+	tcl.evalf("%s label recognized", Node::get_node_by_address(addr())->name());
 }

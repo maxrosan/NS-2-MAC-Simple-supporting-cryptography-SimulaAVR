@@ -7,20 +7,20 @@ set val(ifq) Queue/DropTail/PriQueue ;# interface queue type
 set val(ll) LL ;# link layer type
 set val(ant) Antenna/OmniAntenna ;# antenna model
 set val(ifqlen) 1000 ;# max packet in ifq
-set val(nn) 4 ;# number of mobilenodes
+set val(nn) 50 ;# number of mobilenodes
 set val(rp) DumbAgent ;# routing protocol
 #set val(rp) DSDV ;# routing protocol
 set val(x) 30 ;# X dimension of topography
 set val(y) 30 ;# Y dimension of topography
-set val(stop) 60 ;# time of simulation end
+set val(stop) 1000 ;# time of simulation end
 
 #Create a simulator object
 set ns [new Simulator]
 
-set f [open rfid.tr w]
+set f [open rfid_tests/rfid.tr w]
 $ns trace-all $f
 
-set nf [open rfid.nam w]
+set nf [open rfid_tests/rfid.nam w]
 $ns namtrace-all-wireless $nf $val(x) $val(y)
 $ns use-newtrace
 
@@ -31,8 +31,8 @@ $val(netif) set Pt_ 0.28
 $val(netif) set RXThresh_ 7.64097e-06
 
 #Open a trace file
-set nf [open out.nam w]
-$ns namtrace-all $nf
+#set nf [open out.nam w]
+#$ns namtrace-all $nf
 
 #Define a 'finish' procedure
 #proc finish {} {
@@ -59,9 +59,15 @@ $ns node-config -adhocRouting $val(rp) \
         -channel $chan_1_ \
 	-topoInstance $topo \
 	-agentTrace ON \
-	-routerTrace OFF \
-	-macTrace OFF \
-	-movementTrace OFF
+	-routerTrace ON \
+	-macTrace ON \
+	-movementTrace ON \
+	-energyModel "EnergyModel" \
+	-initialEnergy 3000.4 \
+	-txPower 0.33 \
+	-rxPower 0.1 \
+	-idlePower 0.05 \
+	-sleepPower 0.03
 
 #puts $val(nn)
 #
@@ -99,6 +105,7 @@ $rng3 seed 0
 
 set reader1 [new Agent/RfidReader]
 $ns attach-agent $n(0) $reader1
+#$ns initial_node_pos $n(0) 20
 
 for {set i 1} {$i < $val(nn) } { incr i } {
 
@@ -106,11 +113,67 @@ for {set i 1} {$i < $val(nn) } { incr i } {
 
     $ns attach-agent $n($i) $tag($i)
     $ns connect $reader1 $tag($i)
+#    $ns initial_node_pos $n($i) 20
+
+#    $ns random-motion 0 $n($i)
+
+#    $n($i) set X_ [$rng1 uniform 0 30]
+#    $n($i) set Y_ [$rng2 uniform 0 30]
+    #puts "[$rng2 uniform 0 20]"
+#    $n($i) set Z_ 1
+
 #    $tag($i) set tagEPC_ [expr $i*10]
 #    $tag($i) set time_ 1
 #    $tag($i) set messages_ 0
 #    $tag($i) set seed_ [$rng2 uniform 10 1000]
 }
+
+# Define node initial position in nam
+$ns initial_node_pos $n(0) 8
+
+$n(0) set X_ 15
+$n(0) set Y_ 15
+$n(0) set Z_ 2
+
+set now [$ns now]
+
+for {set i 1} {$i < $val(nn)} { incr i } {
+	$ns initial_node_pos $n($i) 5
+
+	set xx [$rng1 uniform 0 5]
+	set yy [$rng2 uniform 0 5]
+
+	set dxx [$rng1 uniform 0 15]
+	set dyy [$rng2 uniform 0 15]
+
+	$ns at $now "$n($i) set X_ $xx"
+	$ns at $now "$n($i) set Y_ $yy"
+	$ns at $now "$n($i) set Z_ 1"
+
+	$ns at $now "$n($i) setdest $dxx $dyy 1"
+}
+
+proc destination {} {
+
+	global val rng1 rng2 ns n
+
+	set now [$ns now]
+
+	for {set i 1} {$i < $val(nn)} { incr i } {
+		set dxx [$rng1 uniform 0 30]
+		set dyy [$rng2 uniform 0 30]
+		$ns at $now "$n($i) setdest $dxx $dyy 1"
+	}
+}
+
+# dynamic destination setting procedure..
+for {set i 0} {$i < $val(stop)} { incr i 40} {
+	$ns at $i "destination"
+}
+#for {set i 1} {$i < $val(stop) } { incr i 10} {
+#        $ns at $i "destination"
+#}
+
 
 #$ns attach-agent $n(0) $reader1
 #
@@ -118,8 +181,14 @@ for {set i 1} {$i < $val(nn) } { incr i } {
         $ns connect $reader1 $tag($i)
 }
 
-$ns at 0.1 "$reader1 start"
+$ns at 0.0 "$reader1 start"
+
+for {set i 1} {$i < $val(nn)} { incr i} {
+	$ns at 0.0 "$tag($i) start"
+}
+
+
+$ns at $val(stop) "puts \"NS EXITING...\" ; $ns halt"
 
 #Run the simulation
 $ns run
-$ns at 30.0 "finish"

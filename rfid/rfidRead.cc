@@ -5,6 +5,8 @@
  *      Author: max
  */
 
+#define INTERVAL_TO_SCAN_AGAIN 1
+
 #include "rfidRead.h"
 
 static class RfidReadClass : public TclClass {
@@ -21,6 +23,7 @@ RfidReadAgent::RfidReadAgent() : Agent(PT_RFID) {
 	windowSize = 53;
 	windowTimer = new WindowTimer(this);
 	numberOfSlots = 10;
+	recollectionTimer = new RecollectionTimer(this);
 
 	bind("packetSize_", &size_);
 
@@ -44,7 +47,7 @@ void RfidReadAgent::recvTagResponse(Packet *pkt) {
 	removeCollided.slot = hdr->slotChosen;
 
 	if (std::find_if(tagsRecognized.begin(), tagsRecognized.end(), removeCollided)
-		!= tagsRecognized.end()) {
+	!= tagsRecognized.end()) {
 		tagsRecognized.remove_if(removeCollided);
 		return;
 	}
@@ -66,7 +69,7 @@ void RfidReadAgent::recv(Packet *pkt, Handler *h) {
 	if (state == READER_WINDOW && hdrip->daddr() == here_.addr_) {
 
 		if (hdr->tagStatus.modeField == P2P_COMMAND && // mode field
-			hdr->tagStatus.ack == ACK_VALUE) { // ack
+				hdr->tagStatus.ack == ACK_VALUE) { // ack
 			recvTagResponse(pkt);
 		}
 
@@ -121,29 +124,57 @@ void RfidReadAgent::sendCollection() {
 
 	ipHeader->daddr() = IP_BROADCAST;
 	ipHeader->dport() = ipHeader->sport();
-    ipHeader->saddr() = here_.addr_; //Source: reader ip
-    ipHeader->sport() = here_.port_;
+	ipHeader->saddr() = here_.addr_; //Source: reader ip
+	ipHeader->sport() = here_.port_;
 
-    state = READER_WINDOW;
-    currentSlot = 0;
+	state = READER_WINDOW;
+	currentSlot = 0;
 
-    windowTimer->schedule(((double) windowSize) * 1e-3);
+	windowTimer->schedule(((double) windowSize) * 1e-3);
 
-    tagsRecognized.clear();
+	tagsRecognized.clear();
 
-    send(pkt, (Handler*) 0);
+	send(pkt, (Handler*) 0);
+}
+
+void RfidReadAgent::sendSleep(uint32_t tagID) {
+
+	Packet* pkt = allocpkt();
+	hdr_ip* ipHeader = HDR_IP(pkt);
+	hdr_rfid *rfidHeader = hdr_rfid::access(pkt);
+
+	fprintf(stderr, "Sending collection\n");
+
+	memset(rfidHeader, 0, sizeof(hdr_rfid));
+
+	rfidHeader->commandPrefix = 31;
+	rfidHeader->commandType = 1; // 1: broadcast or p2p 0: owner not present
+	rfidHeader->interrogatorID = interrogatorID;
+	rfidHeader->tagID = tagID;
+	rfidHeader->commandCode = 15;
+	rfidHeader->CRC = 0; // not calculated yet
+
+	ipHeader->daddr() = IP_BROADCAST;
+	ipHeader->dport() = ipHeader->sport();
+	ipHeader->saddr() = here_.addr_; //Source: reader ip
+	ipHeader->sport() = here_.port_;
+
+	send(pkt, (Handler*) 0);
 }
 
 void RfidReadAgent::endOfWindow() {
 
-	state = READER_SENDING_SLEEP;
+	state = READER_IDLE;
 
 	std::list<TagRecognized>::const_iterator it = tagsRecognized.begin();
 
 	for (; it != tagsRecognized.end(); it++) {
 		fprintf(stderr, "tag recognized = %u %u\n", it->tagID, it->slot);
+		sendSleep(it->tagID);
 	}
 
 	tagsRecognized.clear();
+
+	recollectionTimer->schedule(INTERVAL_TO_SCAN_AGAIN);
 
 }

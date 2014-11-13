@@ -30,6 +30,7 @@ typedef int (RfidReadAgent::*funcCall)(int, const char* const*);
 #define pointer_map std::map<std::string, funcCall>
 
 class WindowTimer;
+class RecollectionTimer;
 
 enum READER_STATE {
 	READER_SENDING_SLEEP,
@@ -64,6 +65,7 @@ public:
 	int command(int argc, const char*const* argv);
 	virtual void recv(Packet*, Handler*);
 	void recvTagResponse(Packet *pkt);
+	void sendCollection();
 
 	void endOfWindow();
 
@@ -76,10 +78,10 @@ protected:
 	int state;
 	std::list<TagRecognized> tagsRecognized;
 	int currentSlot;
+	RecollectionTimer* recollectionTimer;
 
 	int start(int argc, const char*const* argv);
-
-	void sendCollection();
+	void sendSleep(uint32_t tagID);
 };
 
 struct RfidReadRemoveIfCollided {
@@ -104,6 +106,27 @@ public:
 
 	virtual void handle(Event *e) {
 		reader->endOfWindow();
+	}
+
+	void schedule(double delay) {
+		Scheduler &sched = Scheduler::instance();
+		sched.schedule(this, &intr, delay);
+	}
+};
+
+class RecollectionTimer: public Handler {
+private:
+	RfidReadAgent *reader;
+public:
+
+	Event intr;
+
+	RecollectionTimer(RfidReadAgent *reader) {
+		this->reader = reader;
+	}
+
+	virtual void handle(Event *e) {
+		reader->sendCollection();
 	}
 
 	void schedule(double delay) {
