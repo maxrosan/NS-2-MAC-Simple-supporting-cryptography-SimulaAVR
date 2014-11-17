@@ -5,7 +5,7 @@
  *      Author: max
  */
 
-#define INTERVAL_TO_SCAN_AGAIN 1
+#define INTERVAL_TO_SCAN_AGAIN 3
 
 #include "rfidRead.h"
 
@@ -19,11 +19,12 @@ public:
 
 RfidReadAgent::RfidReadAgent() : Agent(PT_RFID) {
 
-	interrogatorID = 0x1;
-	windowSize = 53;
+	interrogatorID = rand();
+	windowSize = 53 * 3;
 	windowTimer = new WindowTimer(this);
-	numberOfSlots = 10;
-	recollectionTimer = new RecollectionTimer(this);
+	numberOfSlots = 20;
+	//recollectionTimer = new RecollectionTimer(this);
+	wakeUpCommand = new WakeUpCommand(this, 0.5, 2.5);
 
 	bind("packetSize_", &size_);
 
@@ -35,22 +36,22 @@ RfidReadAgent::RfidReadAgent() : Agent(PT_RFID) {
 void RfidReadAgent::recvTagResponse(Packet *pkt) {
 
 	TagRecognized tagRecognized;
-	RfidReadRemoveIfCollided removeCollided;
+	//RfidReadRemoveIfCollided removeCollided;
 
 	hdr_ip* hdrip = hdr_ip::access(pkt);
 	hdr_rfid* hdr = hdr_rfid::access(pkt);
 
-	if (currentSlot > hdr->slotChosen) {
+	/*if (currentSlot > hdr->slotChosen) {
 		return;
-	}
+	}*/
 
-	removeCollided.slot = hdr->slotChosen;
+	//removeCollided.slot = hdr->slotChosen;
 
-	if (std::find_if(tagsRecognized.begin(), tagsRecognized.end(), removeCollided)
+	/*if (std::find_if(tagsRecognized.begin(), tagsRecognized.end(), removeCollided)
 	!= tagsRecognized.end()) {
 		tagsRecognized.remove_if(removeCollided);
 		return;
-	}
+	}*/
 
 	tagRecognized.tagID = hdr->tagID;
 	tagRecognized.battery = hdr->tagStatus.battery;
@@ -59,6 +60,8 @@ void RfidReadAgent::recvTagResponse(Packet *pkt) {
 	tagsRecognized.push_back(tagRecognized);
 
 	currentSlot = hdr->slotChosen;
+
+	Packet::free(pkt);
 }
 
 void RfidReadAgent::recv(Packet *pkt, Handler *h) {
@@ -79,7 +82,14 @@ void RfidReadAgent::recv(Packet *pkt, Handler *h) {
 
 int RfidReadAgent::start(int argc, const char*const* argv) {
 
-	sendCollection();
+	//sendCollection();
+	wakeUpCommand->startSendingWakeUp();
+
+	EnergyModel *em = Node::get_node_by_address(addr())->energy_model();
+
+	if (em) {
+		em->setenergy(1e6);
+	}
 
 	return (TCL_OK);
 }
@@ -102,6 +112,27 @@ int RfidReadAgent::command(int argc, const char*const* argv) {
 	}
 
 	return (Agent::command(argc, argv));
+}
+
+void RfidReadAgent::sendWakeUp() {
+
+	Packet* pkt = allocpkt();
+	hdr_ip* ipHeader = HDR_IP(pkt);
+	hdr_rfid *rfidHeader = hdr_rfid::access(pkt);
+
+	fprintf(stderr, "Sending wakeup\n");
+
+	memset(rfidHeader, 0, sizeof(hdr_rfid));
+
+	rfidHeader->commandPrefix = 0xFF; // Wake up
+
+	ipHeader->daddr() = IP_BROADCAST;
+	ipHeader->dport() = ipHeader->sport();
+	ipHeader->saddr() = here_.addr_; //Source: reader ip
+	ipHeader->sport() = here_.port_;
+
+	send(pkt, (Handler*) 0);
+
 }
 
 void RfidReadAgent::sendCollection() {
@@ -175,6 +206,8 @@ void RfidReadAgent::endOfWindow() {
 
 	tagsRecognized.clear();
 
-	recollectionTimer->schedule(INTERVAL_TO_SCAN_AGAIN);
+	//recollectionTimer->schedule(INTERVAL_TO_SCAN_AGAIN);
+	//wakeUpCommand->startSendingWakeUp();
+	wakeUpCommand->startSendingWakeUpAfter(INTERVAL_TO_SCAN_AGAIN);
 
 }

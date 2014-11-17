@@ -194,7 +194,7 @@ void EnergyModel::set_node_state(int state)
 		}
 		break;
 	default:
-		printf("Wrong state, quit...\n");
+		printf("Wrong state, quit [%d]...\n", state_);
 		abort();
 	}
 }

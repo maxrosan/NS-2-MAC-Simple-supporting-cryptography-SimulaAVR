@@ -19,6 +19,8 @@
 #include "packet.h"
 #include "address.h"
 #include "ip.h"
+#include "node.h"
+#include "../mobile/energy-model.h"
 
 #include "rfidCommon.h"
 #include "rfidPacket.h"
@@ -31,6 +33,7 @@ typedef int (RfidReadAgent::*funcCall)(int, const char* const*);
 
 class WindowTimer;
 class RecollectionTimer;
+class WakeUpCommand;
 
 enum READER_STATE {
 	READER_SENDING_SLEEP,
@@ -66,6 +69,8 @@ public:
 	virtual void recv(Packet*, Handler*);
 	void recvTagResponse(Packet *pkt);
 	void sendCollection();
+	void sendSleep(uint32_t tagID);
+	void sendWakeUp();
 
 	void endOfWindow();
 
@@ -79,9 +84,9 @@ protected:
 	std::list<TagRecognized> tagsRecognized;
 	int currentSlot;
 	RecollectionTimer* recollectionTimer;
+	WakeUpCommand *wakeUpCommand;
 
 	int start(int argc, const char*const* argv);
-	void sendSleep(uint32_t tagID);
 };
 
 struct RfidReadRemoveIfCollided {
@@ -114,7 +119,7 @@ public:
 	}
 };
 
-class RecollectionTimer: public Handler {
+/*class RecollectionTimer: public Handler {
 private:
 	RfidReadAgent *reader;
 public:
@@ -135,6 +140,45 @@ public:
 	}
 
 
+};*/
+
+class WakeUpCommand : public TimerHandler {
+private:
+	RfidReadAgent *reader;
+	double start;
+	double interval;
+	double length;
+public:
+
+	WakeUpCommand(RfidReadAgent *read, double interval, double length) : TimerHandler() {
+		this->reader = read;
+		this->interval = interval;
+		this->length = length;
+	}
+
+	void startSendingWakeUp() {
+		Scheduler &sched = Scheduler::instance();
+		start = sched.clock();
+		reader->sendWakeUp();
+		resched(interval);
+	}
+
+	void startSendingWakeUpAfter(double after) {
+		Scheduler &sched = Scheduler::instance();
+		start = sched.clock() + after;
+		resched(interval + after);
+	}
+
+	virtual void expire(Event *e) {
+		Scheduler &sched = Scheduler::instance();
+
+		if ((sched.clock() - start) < length) {
+			reader->sendWakeUp();
+			resched(interval);
+		} else {
+			reader->sendCollection();
+		}
+	}
 };
 
 #endif /* RFID_RFIDREAD_H_ */
