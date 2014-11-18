@@ -5,7 +5,7 @@
  *      Author: max
  */
 
-#define INTERVAL_TO_SCAN_AGAIN 6
+#define INTERVAL_TO_SCAN_AGAIN 4
 
 #include "rfidRead.h"
 

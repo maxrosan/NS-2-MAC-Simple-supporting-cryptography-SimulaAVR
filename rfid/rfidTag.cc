@@ -309,6 +309,8 @@ void RfidTagAgent::readMemory(Packet *packet, hdr_rfid *hdr) {
 	ipHeader->saddr() = here_.addr_; //Source: reader ip
 	ipHeader->sport() = here_.port_;
 
+	logEvent("%f read_memory %u %u", Scheduler::instance().clock(), tagID, hdr->interrogatorID);
+
 	send(pkt, (Handler*) 0);
 
 	Packet::free(packet);
