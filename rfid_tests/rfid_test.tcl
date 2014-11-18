@@ -12,7 +12,7 @@ set val(ifq) Queue/DropTail/PriQueue ;# interface queue type
 set val(ll) LL ;# link layer type
 set val(ant) Antenna/OmniAntenna ;# antenna model
 set val(ifqlen) 1000 ;# max packet in ifq
-set val(nReaders) 2
+set val(nReaders) 1
 set val(nn) 50 ;# number of mobilenodes
 set val(rp) DumbAgent ;# routing protocol
 #set val(rp) DSDV ;# routing protocol
@@ -36,7 +36,7 @@ create-god [expr $val(nn)]
 #Signal Power (5m)
 #$val(netif) set Pt_ 0.28
 #$val(netif) set RXThresh_ 7.64097e-06
-
+## CC1100 radio
 Phy/WirelessPhy set bandwidth_ 500e3
 Antenna/OmniAntenna set Gt_  1                 ;#Transmit antenna gain  
 Antenna/OmniAntenna set Gr_  1                 ;#Receive  antenna gain  
@@ -50,6 +50,29 @@ Phy/WirelessPhy     set CSThresh_ 2.261e-15  ;#Carrier sense power CSThresh=0.9*
 #(GFSK, 1% packet error rate, 20 bytes packet length, 127 kHz deviation, 540 kHz digital channel filter bandwidth)
 Phy/WirelessPhy     set RxThresh_ 2.512e-15  ;#Receive power  
 
+Agent/RfidTag       set intervalToWaitToSleepAgain_ 10
+Agent/RfidTag       set intervalToWaitSleepCommand_ 5
+Agent/RfidTag       set numberOfCyclesForAuthenticating_ 0; # password
+Agent/RfidTag       set numberOfCyclesForEncrypting_ 0; # dummy data
+Agent/RfidTag       set intervalToCalculateColdStart_ 900; # dummy data
+Agent/RfidTag       set intervalToCalculateHotStart_ 120
+
+# key scheduling + encrypting
+Agent/RfidTag set numberOfCyclesForAuthenticating_ 22403; # AES
+# Agent/RfidTag set numberOfCyclesForAuthenticating_ 271998; # DES
+# Agent/RfidTag set numberOfCyclesForAuthenticating_ 11830; # KLEIN64
+# Agent/RfidTag set numberOfCyclesForAuthenticating_ 8319; # TEA
+# Agent/RfidTag set numberOfCyclesForAuthenticating_ 179563; # KATAN48
+# Agent/RfidTag set numberOfCyclesForAuthenticating_ 11509; # HIGHT
+# Agent/RfidTag set numberOfCyclesForAuthenticating_ 95389; # RC6
+
+Agent/RfidTag set numberOfCyclesForEncrypting_ 559766; # AES
+# Agent/RfidTag set numberOfCyclesForEncrypting_ 17376003; # DES
+# Agent/RfidTag set numberOfCyclesForEncrypting_ 718699; # KLEIN64
+# Agent/RfidTag set numberOfCyclesForEncrypting_ 500547; # TEA
+# Agent/RfidTag set numberOfCyclesForEncrypting_ 14865463; # KATAN48
+# Agent/RfidTag set numberOfCyclesForEncrypting_ 413521; # HIGHT
+# Agent/RfidTag set numberOfCyclesForEncrypting_ 244960; # RC6
 
 #Open a trace file
 #set nf [open out.nam w]

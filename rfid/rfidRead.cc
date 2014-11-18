@@ -5,7 +5,7 @@
  *      Author: max
  */
 
-#define INTERVAL_TO_SCAN_AGAIN 5
+#define INTERVAL_TO_SCAN_AGAIN 6
 
 #include "rfidRead.h"
 
@@ -19,16 +19,19 @@ public:
 
 RfidReadAgent::RfidReadAgent() : Agent(PT_RFID) {
 
-	interrogatorID = rand();
+	interrogatorID = rand() & 0xFF;
 	windowSize = 53 * 2;
 	windowTimer = new WindowTimer(this);
 	numberOfSlots = 20;
 	//recollectionTimer = new RecollectionTimer(this);
 	wakeUpCommand = new WakeUpCommand(this, 0.5, 2.5);
+	slotSenderTimer = new SlotSenderTimer(this);
 
 	bind("packetSize_", &size_);
 
 	commandsMap["start"] = &RfidReadAgent::start;
+
+	slotSenderTimer->setInterval(((windowSize * 1e-3) / numberOfSlots));
 
 	state = READER_IDLE;
 }
@@ -69,13 +72,29 @@ void RfidReadAgent::recv(Packet *pkt, Handler *h) {
 	hdr_ip* hdrip = hdr_ip::access(pkt);
 	hdr_rfid* hdr = hdr_rfid::access(pkt);
 
-	fprintf(stderr, "READER [%u] received [%u]\n", hdr->tagID);
+	//fprintf(stderr, "READER [%u] received [%u]\n", hdr->tagID);
 
-	if (state == READER_WINDOW && hdrip->daddr() == IP_BROADCAST) {
+	if (hdrip->daddr() == IP_BROADCAST) {
 
 		if (hdr->tagStatus.modeField == P2P_COMMAND && // mode field
-				hdr->tagStatus.ack == ACK_VALUE) { // ack
-			recvTagResponse(pkt);
+				hdr->tagStatus.ack == ACK_VALUE &&
+				hdr->interrogatorID == interrogatorID) { // ack
+
+			if (hdr->commandCode == 10) { // collect
+				recvTagResponse(pkt);
+			} else if (hdr->commandCode == 60) { // read memory response
+				sendSleep(hdr->tagID);
+			}
+
+		} else {
+
+			fprintf(stderr, "READER [%u] dropping [%u][%u][%u][%u]\n",
+					interrogatorID,
+					hdr->tagID,
+					hdr->interrogatorID,
+					hdr->tagStatus.ack,
+					hdr->tagStatus.modeField);
+
 		}
 
 	} else {
@@ -97,6 +116,8 @@ int RfidReadAgent::start(int argc, const char*const* argv) {
 		em->setenergy(1e6);
 		//em->start_powersaving();
 	}
+
+	slotSenderTimer->resched(0);
 
 	return (TCL_OK);
 }
@@ -165,7 +186,7 @@ void RfidReadAgent::sendCollection() {
 	ipHeader->saddr() = here_.addr_; //Source: reader ip
 	ipHeader->sport() = here_.port_;
 
-	state = READER_WINDOW;
+	//state = READER_WINDOW;
 	currentSlot = 0;
 
 	windowTimer->schedule(((double) windowSize) * 1e-3);
@@ -173,6 +194,8 @@ void RfidReadAgent::sendCollection() {
 	tagsRecognized.clear();
 
 	send(pkt, (Handler*) 0);
+
+	//slotSenderTimer->send(pkt);
 }
 
 void RfidReadAgent::sendSleep(uint32_t tagID) {
@@ -181,7 +204,7 @@ void RfidReadAgent::sendSleep(uint32_t tagID) {
 	hdr_ip* ipHeader = HDR_IP(pkt);
 	hdr_rfid *rfidHeader = hdr_rfid::access(pkt);
 
-	fprintf(stderr, "Sending collection\n");
+	fprintf(stderr, "Sending sleep\n");
 
 	memset(rfidHeader, 0, sizeof(hdr_rfid));
 
@@ -197,8 +220,38 @@ void RfidReadAgent::sendSleep(uint32_t tagID) {
 	ipHeader->saddr() = here_.addr_; //Source: reader ip
 	ipHeader->sport() = here_.port_;
 
+	fprintf(stderr, "tag recognized = %u\n", tagID);
+
 	send(pkt, (Handler*) 0);
 }
+
+void RfidReadAgent::sendReadMemory(uint32_t tagID) {
+
+	Packet* pkt = allocpkt();
+	hdr_ip* ipHeader = HDR_IP(pkt);
+	hdr_rfid *rfidHeader = hdr_rfid::access(pkt);
+
+	fprintf(stderr, "Sending read memory to tag %u\n", tagID);
+
+	memset(rfidHeader, 0, sizeof(hdr_rfid));
+
+	rfidHeader->commandPrefix = 31;
+	rfidHeader->commandType = 0; // position 1: broadcast or p2p 0: owner not present
+	rfidHeader->interrogatorID = interrogatorID;
+	rfidHeader->tagID = tagID;
+	rfidHeader->commandCode = 60;
+	rfidHeader->CRC = 0; // not calculated yet
+
+	ipHeader->daddr() = IP_BROADCAST;
+	ipHeader->dport() = ipHeader->sport();
+	ipHeader->saddr() = here_.addr_; //Source: reader ip
+	ipHeader->sport() = here_.port_;
+
+	//send(pkt, (Handler*) 0);
+
+	slotSenderTimer->send(pkt);
+}
+
 
 void RfidReadAgent::endOfWindow() {
 
@@ -206,15 +259,15 @@ void RfidReadAgent::endOfWindow() {
 
 	std::list<TagRecognized>::const_iterator it = tagsRecognized.begin();
 
+	fprintf(stderr, "reader: end of window\n");
+
 	for (; it != tagsRecognized.end(); it++) {
-		fprintf(stderr, "tag recognized = %u %u\n", it->tagID, it->slot);
-		sendSleep(it->tagID);
+		sendReadMemory(it->tagID);
 	}
 
 	tagsRecognized.clear();
 
 	//recollectionTimer->schedule(INTERVAL_TO_SCAN_AGAIN);
-	//wakeUpCommand->startSendingWakeUp();
 	wakeUpCommand->startSendingWakeUpAfter(INTERVAL_TO_SCAN_AGAIN);
 
 }

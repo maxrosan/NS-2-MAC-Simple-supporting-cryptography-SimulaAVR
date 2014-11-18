@@ -10,6 +10,7 @@
 
 #include <string>
 #include <utility>
+#include <queue>
 #include <map>
 #include <list>
 #include <algorithm>
@@ -34,9 +35,11 @@ typedef int (RfidReadAgent::*funcCall)(int, const char* const*);
 class WindowTimer;
 class RecollectionTimer;
 class WakeUpCommand;
+class SlotSenderTimer;
 
 enum READER_STATE {
 	READER_SENDING_SLEEP,
+	READER_SENDING_MEM,
 	READER_IDLE,
 	READER_WINDOW};
 
@@ -71,9 +74,9 @@ public:
 	void sendCollection();
 	void sendSleep(uint32_t tagID);
 	void sendWakeUp();
-
+	void sendReadMemory(uint32_t tagID);
 	void endOfWindow();
-
+	void putTagsToSleep();
 protected:
 	pointer_map commandsMap;
 	uint16_t windowSize;
@@ -85,6 +88,7 @@ protected:
 	int currentSlot;
 	RecollectionTimer* recollectionTimer;
 	WakeUpCommand *wakeUpCommand;
+	SlotSenderTimer *slotSenderTimer;
 
 	int start(int argc, const char*const* argv);
 };
@@ -141,6 +145,39 @@ public:
 
 
 };*/
+
+class SlotSenderTimer : public TimerHandler {
+private:
+	std::queue<Packet*> packets;
+	RfidReadAgent *reader;
+	double interval;
+public:
+
+	SlotSenderTimer(RfidReadAgent *reader) : TimerHandler() {
+		this->reader = reader;
+		interval = 1.;
+	}
+
+	void setInterval(double interval) {
+		this->interval = interval;
+	}
+
+	void send(Packet *p) {
+		packets.push(p);
+	}
+
+	virtual void expire(Event *e) {
+		if (packets.size() > 0) {
+			Packet *p = packets.front();
+			reader->send(p, NULL);
+			packets.pop();
+
+			fprintf(stderr, "sending slot packet\n");
+		}
+		resched(interval);
+	}
+
+};
 
 class WakeUpCommand : public TimerHandler {
 private:

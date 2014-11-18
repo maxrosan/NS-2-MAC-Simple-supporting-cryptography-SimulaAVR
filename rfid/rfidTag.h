@@ -7,6 +7,7 @@
 #include <utility>
 #include <map>
 #include <cstdarg>
+#include <cmath>
 
 #include "agent.h"
 #include "tclcl.h"
@@ -27,8 +28,11 @@ class RfidTagAgent;
 class TagLogTimer;
 class TagCheckStateTimer;
 class TagWindowTimer;
+class TagWaitSleepTimer;
+class TagGPSTimer;
 
-enum { TAG_IDLE, TAG_WAITING_SLOT, TAG_SLEEPING, TAG_WAITING_WINDOW };
+enum { TAG_IDLE, TAG_WAITING_SLOT, TAG_SLEEPING, TAG_WAITING_WINDOW, TAG_WAITING_SLEEP, TAG_WAITING_SOME_COMMAND };
+enum { CPU_IDLE, CPU_PROCESSING };
 
 char* namesOfStates[] = { "TAG_IDLE", "TAG_WAITING_SLOT", "TAG_SLEEPING", "TAG_WAITING_WINDOW" };
 char* namesOfStatesOfRadio[] = { "WAITING", "POWERSAVING", "INROUTE"};
@@ -50,21 +54,37 @@ public:
 	void check();
 	void wakeUpCommand();
 	void sleepCommand();
+	void stopWaitingSleep();
+	void calculateGPS();
 protected:
 	CollectResponseTimer *collectResponseTimer;
 	TagLogTimer *logTimer;
 	TagCheckStateTimer *checkStateTimer;
 	TagWindowTimer *windowTimer;
+	TagWaitSleepTimer *waitSleepTimer;
+	TagGPSTimer *gpsTimer;
 
 	uint16_t tagID;
 	pointer_map commandsMap;
 	int state;
 	int numberOfTimesRecognized;
-	bool mustSleep;
-	double firstTimeReceivedWakeUp;
 	double intervalToWaitToSleepAgain;
+	double intervalToWaitSleepCommand;
+	int numberOfCyclesForAuthenticating;
+	int numberOfCyclesForEncrypting;
+
+	double intervalToCalculateColdStart;
+	double intervalToCalculateHotStart;
+
+	double lastTimeCalculatedGPSColdState;
+	double lastTimeCalculatedGPSHotState;
+
+	int cpuState;
+	double endOfNextTask;
+	double lastTimeCPUChecked;
 
 	void collectId(Packet *p, hdr_rfid *hdr);
+	void readMemory(Packet *p, hdr_rfid *hdr);
 	EnergyModel* em() { return Node::get_node_by_address(addr())->energy_model(); }
 	void consume(double energy);
 	void logEvent(const char *message, ...);
@@ -136,6 +156,10 @@ public:
 		interval = 2.;
 	}
 
+	void setInterval(double interval) {
+		this->interval = interval;
+	}
+
 	void start() {
 		running = true;
 		resched(interval);
@@ -168,6 +192,78 @@ public:
 
 	virtual void expire(Event *e) {
 		tag->waitWindowCall();
+	}
+
+
+};
+
+class TagWaitSleepTimer: public TimerHandler {
+private:
+	RfidTagAgent *tag;
+	double timeToWaitSLeepCommand;
+	bool cancel;
+
+public:
+
+	TagWaitSleepTimer(RfidTagAgent *tag) : TimerHandler(){
+		this->tag = tag;
+		timeToWaitSLeepCommand = 2;
+		cancel = false;
+	}
+
+	void setTimeToWaitSleepCommand(double timeToWaitSLeepCommand) {
+		this->timeToWaitSLeepCommand = timeToWaitSLeepCommand;
+	}
+
+	void reschedule() {
+		cancel = false;
+		resched(timeToWaitSLeepCommand);
+	}
+
+	void cancelTimer() {
+		cancel = true;
+	}
+
+	virtual void expire(Event *e) {
+		if (!cancel)
+			tag->stopWaitingSleep();
+	}
+
+
+};
+
+class TagGPSTimer: public TimerHandler {
+private:
+	RfidTagAgent *tag;
+	double timeToCalculateAgain;
+	bool cancel;
+
+public:
+
+	TagGPSTimer(RfidTagAgent *tag) : TimerHandler(){
+		this->tag = tag;
+		timeToCalculateAgain = 2;
+		cancel = false;
+	}
+
+	void setInterval(double time) {
+		this->timeToCalculateAgain = time;
+	}
+
+	void reschedule() {
+		cancel = false;
+		resched(timeToCalculateAgain);
+	}
+
+	void cancelTimer() {
+		cancel = true;
+	}
+
+	virtual void expire(Event *e) {
+		if (!cancel) {
+			tag->calculateGPS();
+			reschedule();
+		}
 	}
 
 
