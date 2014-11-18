@@ -51,6 +51,9 @@
 #include "address.h"
 #include "ip.h"
 
+#include "wireless-phy.h"
+#include "../rfid/rfidPacket.h"
+
 class MacSimpleWaitTimer;
 class MacSimpleSendTimer;
 class MacSimpleRecvTimer;
@@ -88,6 +91,8 @@ private:
 	MacSimpleWaitTimer *waitTimer;
 	MacSimpleSendTimer *sendTimer;
 	MacSimpleRecvTimer *recvTimer;
+
+	bool checkRfidPacket(Packet *pkt);
 
 	int busy_ ;
 

@@ -43,7 +43,6 @@
 #include "packet.h"
 #include "basetrace.h"
 
-
 /* Tracing has evolved into two types, packet tracing and event tracing.
 Class Trace essentially supports packet tracing. 
 However in addition to the basic tracing properties (that it derives from a BaseTrace class), pkt-tracing also requires to inherit some of the Connector class properties as well.

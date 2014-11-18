@@ -198,11 +198,43 @@ MacSimple::txtime(Packet *p)
 	 return t;
  }
 
+bool MacSimple::checkRfidPacket(Packet *pkt) {
 
+	hdr_rfid *hdr = hdr_rfid::access(pkt);
+
+	if (hdr == NULL) {
+		return false;
+	}
+
+	if (!hdr->lowLevelCommand) {
+		return false;
+	}
+
+	WirelessPhy *phy = (WirelessPhy*) netif_;
+
+	if (hdr->commandCode == WAKE_UP_CMD) {
+		phy->node_wakeup();
+
+		fprintf(stderr, "Wake up radio\n");
+
+	} else if (hdr->commandCode == SLEEP_CMD) {
+		phy->node_sleep();
+
+		fprintf(stderr, "Sleep radio\n");
+	}
+
+	Packet::free(pkt);
+
+	return true;
+}
 
 void MacSimple::send(Packet *p, Handler *h)
 {
 	hdr_cmn* ch = HDR_CMN(p);
+
+	if (checkRfidPacket(p)) {
+		return;
+	}
 
 	/* store data tx time */
  	ch->txtime() = Mac::txtime(ch->size());
@@ -216,6 +248,8 @@ void MacSimple::send(Packet *p, Handler *h)
 		// Note that this normally won't happen due to the queue
 		// between the LL and the MAC .. the queue won't send us
 		// another packet until we call its handler in sendHandler()
+
+		fprintf(stderr, "Droping\n");
 
 		Packet::free(p);
 		return;
@@ -261,10 +295,12 @@ void MacSimple::recvHandler()
 	// as different chanels are used for tx and rx'ing
 	if (!fullduplex_mode_ && tx_active_) {
 		// we are currently sending, so discard packet
+		fprintf(stderr, "Sending, discarding...\n");
 		Packet::free(p);
 	} else if (state == MAC_COLL) {
 		// recv collision, so discard the packet
 		drop(p, DROP_MAC_COLLISION);
+		fprintf(stderr, "Collision...\n");
 		//Packet::free(p);
 	} else if (dst != index_ && (u_int32_t)dst != MAC_BROADCAST) {
 		
@@ -272,11 +308,16 @@ void MacSimple::recvHandler()
 		 *  We don't want to log this event, so we just free
 		 *  the packet instead of calling the drop routine.
 		 */
+
+		fprintf(stderr, "Addr filtering...\n");
+
 		Packet::free(p);
 	} else if (ch->error()) {
 		// packet has errors, so discard it
 		//Packet::free(p);
 		drop(p, DROP_MAC_PACKET_ERROR);
+
+		fprintf(stderr, "Packet error...\n");
 	
 	} else {
 		uptarget_->recv(p, (Handler*) 0);

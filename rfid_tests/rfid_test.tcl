@@ -1,19 +1,24 @@
 
 set val(chan) Channel/WirelessChannel ;# channel type
 set val(prop) Propagation/TwoRayGround ;# radio-propagation model: TwoRayGround/FreeSpace
+
 set val(netif) Phy/WirelessPhy ;# network interface type
 set val(mac) Mac/Simple ;# MAC type
+
+#set val(netif)          Phy/WirelessPhy/802_15_4 ;
+#set val(mac)            Mac/802_15_4
+
 set val(ifq) Queue/DropTail/PriQueue ;# interface queue type
 set val(ll) LL ;# link layer type
 set val(ant) Antenna/OmniAntenna ;# antenna model
 set val(ifqlen) 1000 ;# max packet in ifq
-set val(nReaders) 4
-set val(nn) 30 ;# number of mobilenodes
+set val(nReaders) 2
+set val(nn) 50 ;# number of mobilenodes
 set val(rp) DumbAgent ;# routing protocol
 #set val(rp) DSDV ;# routing protocol
-set val(x) 300 ;# X dimension of topography
-set val(y) 300 ;# Y dimension of topography
-set val(zones) 10 ;
+set val(x) 100 ;# X dimension of topography
+set val(y) 100 ;# Y dimension of topography
+set val(zones) 2 ;
 set val(stop) 1000 ;# time of simulation end
 
 #Create a simulator object

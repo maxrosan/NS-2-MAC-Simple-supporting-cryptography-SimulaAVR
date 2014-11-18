@@ -12,6 +12,8 @@
 
 #include <stdint.h>
 
+enum { WAKE_UP_CMD, SLEEP_CMD };
+
 struct hdr_rfid {
 
 	struct {
@@ -35,6 +37,8 @@ struct hdr_rfid {
 	uint16_t windowSize;
 	uint16_t numberOfSlots;
 	uint16_t slotChosen;
+
+	bool lowLevelCommand;
 
 	// Header access methods
 	static int offset_; // required by PacketHeaderManager

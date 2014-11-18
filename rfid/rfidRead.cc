@@ -5,7 +5,7 @@
  *      Author: max
  */
 
-#define INTERVAL_TO_SCAN_AGAIN 3
+#define INTERVAL_TO_SCAN_AGAIN 5
 
 #include "rfidRead.h"
 
@@ -20,7 +20,7 @@ public:
 RfidReadAgent::RfidReadAgent() : Agent(PT_RFID) {
 
 	interrogatorID = rand();
-	windowSize = 53 * 3;
+	windowSize = 53 * 2;
 	windowTimer = new WindowTimer(this);
 	numberOfSlots = 20;
 	//recollectionTimer = new RecollectionTimer(this);
@@ -69,12 +69,18 @@ void RfidReadAgent::recv(Packet *pkt, Handler *h) {
 	hdr_ip* hdrip = hdr_ip::access(pkt);
 	hdr_rfid* hdr = hdr_rfid::access(pkt);
 
-	if (state == READER_WINDOW && hdrip->daddr() == here_.addr_) {
+	fprintf(stderr, "READER [%u] received [%u]\n", hdr->tagID);
+
+	if (state == READER_WINDOW && hdrip->daddr() == IP_BROADCAST) {
 
 		if (hdr->tagStatus.modeField == P2P_COMMAND && // mode field
 				hdr->tagStatus.ack == ACK_VALUE) { // ack
 			recvTagResponse(pkt);
 		}
+
+	} else {
+
+		fprintf(stderr, "READER [%u] dropping [%u]\n", hdr->tagID);
 
 	}
 
@@ -89,6 +95,7 @@ int RfidReadAgent::start(int argc, const char*const* argv) {
 
 	if (em) {
 		em->setenergy(1e6);
+		//em->start_powersaving();
 	}
 
 	return (TCL_OK);
