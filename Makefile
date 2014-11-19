@@ -38,8 +38,8 @@ CPP	= g++
 LINK	= $(CPP)
 LINK_SHLIB = gcc -shared
 MKDEP	= ./conf/mkdep
-TCLSH	= /bin/tclsh8.5
-TCL2C	= ../tclcl-1.20/tcl2c++
+TCLSH	= /usr/bin/tclsh8.5
+TCL2C	= /usr/local/bin/tcl2c++
 AR	= ar rc $(BLANK)
 
 RANLIB	= ranlib
@@ -53,7 +53,7 @@ PERL	= /usr/bin/perl
 # for diffusion
 #DIFF_INCLUDES = "./diffusion3/main ./diffusion3/lib ./diffusion3/nr ./diffusion3/ns"
 
-CCOPT	= -O2 -Wall -Wno-write-strings -ggdb
+CCOPT	=  -Wall -Wno-write-strings -ggdb
 STATIC	= 
 #LDFLAGS	= $(STATIC)
 LDFLAGS	=  -Wl,-export-dynamic 
@@ -64,7 +64,7 @@ DEFINE	= -DTCP_DELAY_BIND_ALL -DNO_TK -DTCLCL_CLASSINSTVAR  -DNDEBUG -DLINUX_TCP
 INCLUDES = \
 	-I.  \
 	-I. \
-	-I/home/max/Src/ns2/tclcl-1.20 -I/home/max/Src/ns2/otcl-1.14 -I/usr/include -I/usr/include/tcl-private/generic -I/usr/include -I/usr/include/pcap \
+	-I/usr/local/include -I/usr/local/include -I/usr/include/tcl -I/usr/include/tcl8.5/tcl-private/generic -I/usr/include/tcl8.5/tcl-private/generic -I/usr/include/pcap \
 	-I./tcp -I./sctp -I./common -I./link -I./queue \
 	-I./adc -I./apps -I./mac -I./mobile -I./trace \
 	-I./routing -I./tools -I./classifier -I./mcast \
@@ -76,9 +76,9 @@ INCLUDES = \
 
 
 LIB	= \
-	-L/home/max/Src/ns2/tclcl-1.20 -ltclcl -L/home/max/Src/ns2/otcl-1.14 -lotcl -L/usr/lib64 -ltk8.5 -L/usr/lib64 -ltcl8.5 \
+	-L/usr/local/lib -ltclcl -L/usr/local/lib -lotcl -L/usr/lib -ltk8.5 -L/usr/lib -ltcl8.5 \
 	-lXext -lX11 \
-	 -lnsl -lpcap -ldl \
+	 -lnsl -ldl \
 	-lm -lm 
 #	-L${exec_prefix}/lib \
 
@@ -395,7 +395,7 @@ SUBDIRS=\
 	indep-utils/webtrace-conv/nlanr \
 	indep-utils/webtrace-conv/ucb
 
-BUILD_NSE = nse
+BUILD_NSE = 
 
 all: $(NS) $(BUILD_NSE) $(NSTK) all-recursive Makefile
 

@@ -52,10 +52,10 @@ prefix  = /usr/local
 BINDEST = /usr/local/bin
 
 CC = g++
-INCLUDE = -I. -I/home/max/Src/ns2/tclcl-1.20 -I/home/max/Src/ns2/otcl-1.14 -I/usr/include -I/usr/include/tcl-private/generic -I/usr/include -I/usr/include/pcap
-CFLAGS = -O2 -Wall -Wno-write-strings -DCPP_NAMESPACE=std
+INCLUDE = -I. -I/usr/local/include -I/usr/local/include -I/usr/include/tcl -I/usr/include/tcl8.5/tcl-private/generic -I/usr/include/tcl8.5/tcl-private/generic -I/usr/include/pcap
+CFLAGS =  -Wall -Wno-write-strings -DCPP_NAMESPACE=std
 LDFLAGS = 
-LIBS = -L/usr/lib64 -ltcl8.5  -lnsl -lpcap -ldl -lm 
+LIBS = -L/usr/lib -ltcl8.5  -lnsl -ldl -lm 
 INSTALL = /usr/bin/install -c
 
 SRC = proxytrace.cc formsquid.cc formtxt.cc my-endian.cc \

@@ -12,14 +12,14 @@ set val(ifq) Queue/DropTail/PriQueue ;# interface queue type
 set val(ll) LL ;# link layer type
 set val(ant) Antenna/OmniAntenna ;# antenna model
 set val(ifqlen) 1000 ;# max packet in ifq
-set val(nReaders) 1
-set val(nn) 20 ;# number of mobilenodes
+set val(nReaders) 4
+set val(nn) 100 ;# number of mobilenodes
 set val(rp) DumbAgent ;# routing protocol
 #set val(rp) DSDV ;# routing protocol
-set val(x) 30 ;# X dimension of topography
-set val(y) 30 ;# Y dimension of topography
+set val(x) 500 ;# X dimension of topography
+set val(y) 500 ;# Y dimension of topography
 set val(zones) 2 ;
-set val(stop) 1000 ;# time of simulation end
+set val(stop) 100 ;# time of simulation end
 
 #Create a simulator object
 set ns [new Simulator]
@@ -166,54 +166,34 @@ for {set i $val(nReaders)} { $i < $val(nn) } { incr i } {
 
 # Define node initial position in nam
 
-set now [$ns now]
-
-set deltaX [expr { $val(x) / $val(zones) } ]
-set deltaY [expr { $val(y) / $val(zones) } ]
+set now [$ns now];
 
 for {set i 0} {$i < $val(nReaders)} { incr i } {
 
 	$ns initial_node_pos $n($i) 16
 
-	set chosen 0
+	set xx 0
+	set yy 0
 
-	set delta1 0
-	set delta2 0
-
-	while { $chosen == 0 } {
-
-		set delta1 [$rng1 uniform 0 $val(zones)]
-		set delta2 [$rng2 uniform 0 $val(zones)]
-
-		if {$delta1 == $val(zones)} {
-			set $delta1 [expr $val(zones) - 1]
-		}
-
-		if {$delta2 == $val(zones)} {
-			set $delta2 [expr $val(zones) - 1]
-		}
-
-		set chosen 1
-
-		for {set j 0} {$j < $i} { incr j } {
-			if { $dx($j) == $delta1 && $dy($j) == $delta2 } { set chosen 0 }
-		}
+	if { $i == 0 } {
+		set xx 125
+		set yy 125
+	} elseif { $i == 1 } {
+		set xx 375
+		set yy 125
+	} elseif { $i == 2 } {
+		set xx 125
+		set yy 375
+	} else {
+		set xx 375
+		set yy 375
 	}
-
-	set dx($i) $delta1
-	set dy($i) $delta2
-
-	set xx [expr { int($deltaX) * int($delta1) }]
-	set yy [expr { int($deltaY) * int($delta2) }]
-
-	if { $xx == 0 } { set xx 1 }
-	if { $yy == 0 } { set yy 1 }
 
 	$ns at $now "$n($i) set X_ $xx"
 	$ns at $now "$n($i) set Y_ $yy"
 	$ns at $now "$n($i) set Z_ 2"
 
-	$ns at $now "$n($i) setdest $xx $yy 2"
+	$ns at $now "$n($i) setdest $xx $yy 1"
 }
 
 for {set i $val(nReaders)} {$i < $val(nn)} { incr i } {
@@ -226,11 +206,13 @@ for {set i $val(nReaders)} {$i < $val(nn)} { incr i } {
 	$ns at $now "$n($i) set Y_ $yy"
 	$ns at $now "$n($i) set Z_ 1"
 
-	$ns at $now "$n($i) setdest $xx $yy 1"
+	set speed [$rng1 uniform 1 10]
+
+	$ns at $now "$n($i) setdest $xx $yy $speed"
 }
 
 # dynamic destination setting procedure..
-for {set i 0} {$i < $val(stop)} { incr i 160} {
+for {set i 0} {$i < $val(stop)} { incr i 40} {
 	$ns at $i "destination"
 }
 
