@@ -12,8 +12,8 @@ set val(ifq) Queue/DropTail/PriQueue ;# interface queue type
 set val(ll) LL ;# link layer type
 set val(ant) Antenna/OmniAntenna ;# antenna model
 set val(ifqlen) 1000 ;# max packet in ifq
-set val(nReaders) 4
-set val(nn) 100 ;# number of mobilenodes
+set val(nReaders) 4 ;
+set val(nn) 204 ;
 set val(rp) DumbAgent ;# routing protocol
 #set val(rp) DSDV ;# routing protocol
 set val(x) 500 ;# X dimension of topography
@@ -52,13 +52,16 @@ Phy/WirelessPhy     set RxThresh_ 2.512e-15  ;#Receive power
 
 Agent/RfidTag       set intervalToWaitToSleepAgain_ 10
 Agent/RfidTag       set intervalToWaitSleepCommand_ 5
-Agent/RfidTag       set numberOfCyclesForAuthenticating_ 0; # password
-Agent/RfidTag       set numberOfCyclesForEncrypting_ 0; # dummy data
+#Agent/RfidTag       set numberOfCyclesForAuthenticating_ 0; # password
+#Agent/RfidTag       set numberOfCyclesForEncrypting_ 0; # dummy data
 Agent/RfidTag       set intervalToCalculateColdStart_ 900; # dummy data
 Agent/RfidTag       set intervalToCalculateHotStart_ 120
 
+Agent/RfidTag set numberOfCyclesForAuthenticating_ 22403 ;
+Agent/RfidTag set numberOfCyclesForEncrypting_ 559766 ;
+
 # key scheduling + encrypting
-Agent/RfidTag set numberOfCyclesForAuthenticating_ 22403; # AES
+# Agent/RfidTag set numberOfCyclesForAuthenticating_ 22403; # AES
 # Agent/RfidTag set numberOfCyclesForAuthenticating_ 271998; # DES
 # Agent/RfidTag set numberOfCyclesForAuthenticating_ 11830; # KLEIN64
 # Agent/RfidTag set numberOfCyclesForAuthenticating_ 8319; # TEA
@@ -66,7 +69,7 @@ Agent/RfidTag set numberOfCyclesForAuthenticating_ 22403; # AES
 # Agent/RfidTag set numberOfCyclesForAuthenticating_ 11509; # HIGHT
 # Agent/RfidTag set numberOfCyclesForAuthenticating_ 95389; # RC6
 
-Agent/RfidTag set numberOfCyclesForEncrypting_ 559766; # AES
+# Agent/RfidTag set numberOfCyclesForEncrypting_ 559766; # AES
 # Agent/RfidTag set numberOfCyclesForEncrypting_ 17376003; # DES
 # Agent/RfidTag set numberOfCyclesForEncrypting_ 718699; # KLEIN64
 # Agent/RfidTag set numberOfCyclesForEncrypting_ 500547; # TEA
