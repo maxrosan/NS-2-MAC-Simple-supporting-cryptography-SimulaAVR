@@ -208,6 +208,9 @@ void RfidTagAgent::responseCollect(Packet *packet, hdr_rfid *hdr, int slot) {
 	rfidHeader->slotChosen = slot;
 	rfidHeader->commandCode = 10;
 
+	rfidHeader->windowSize = hdr->windowSize;
+	rfidHeader->numberOfSlots = hdr->numberOfSlots;
+
 	ipHeader->daddr() = IP_BROADCAST;
 	ipHeader->dport() = intIpHeader->sport();
 	ipHeader->saddr() = here_.addr_; //Source: reader ip
@@ -270,6 +273,7 @@ void RfidTagAgent::sleep(Packet *pkt, hdr_rfid *hdr) {
 void RfidTagAgent::startToWakeUp(Packet *pkt) {
 	//checkStateTimer->stop();
 	wakeUpCommand();
+	Packet::free(pkt);
 }
 
 void RfidTagAgent::readMemory(Packet *packet, hdr_rfid *hdr) {
@@ -347,6 +351,8 @@ void RfidTagAgent::recv(Packet *pkt, Handler *h) {
 					readMemory(pkt, hdr);
 				}
 				break;
+			default:
+				Packet::free(pkt);
 			}
 		} else if (hdr->commandPrefix == 0xFF) {
 			startToWakeUp(pkt);

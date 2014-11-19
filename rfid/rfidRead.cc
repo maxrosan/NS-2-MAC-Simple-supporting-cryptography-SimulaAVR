@@ -34,6 +34,8 @@ RfidReadAgent::RfidReadAgent() : Agent(PT_RFID) {
 	slotSenderTimer->setInterval(((windowSize * 1e-3) / numberOfSlots));
 
 	state = READER_IDLE;
+
+	sumOfDelays = 0.;
 }
 
 void RfidReadAgent::recvTagResponse(Packet *pkt) {
@@ -43,6 +45,8 @@ void RfidReadAgent::recvTagResponse(Packet *pkt) {
 
 	hdr_ip* hdrip = hdr_ip::access(pkt);
 	hdr_rfid* hdr = hdr_rfid::access(pkt);
+
+	double slotInterval = ((hdr->windowSize * 1e-3) / hdr->numberOfSlots);
 
 	/*if (currentSlot > hdr->slotChosen) {
 		return;
@@ -55,6 +59,11 @@ void RfidReadAgent::recvTagResponse(Packet *pkt) {
 		tagsRecognized.remove_if(removeCollided);
 		return;
 	}*/
+
+	fprintf(stderr, "response delay = %f\n",
+			Scheduler::instance().clock() - lastTimeCollectWasSend - slotInterval * hdr->slotChosen);
+
+	sumOfDelays += Scheduler::instance().clock() - lastTimeCollectWasSend - slotInterval * hdr->slotChosen;
 
 	tagRecognized.tagID = hdr->tagID;
 	tagRecognized.battery = hdr->tagStatus.battery;
@@ -84,6 +93,7 @@ void RfidReadAgent::recv(Packet *pkt, Handler *h) {
 				recvTagResponse(pkt);
 			} else if (hdr->commandCode == 60) { // read memory response
 				sendSleep(hdr->tagID);
+				Packet::free(pkt);
 			}
 
 		} else {
@@ -95,11 +105,15 @@ void RfidReadAgent::recv(Packet *pkt, Handler *h) {
 					hdr->tagStatus.ack,
 					hdr->tagStatus.modeField);
 
+			Packet::free(pkt);
+
 		}
 
 	} else {
 
 		fprintf(stderr, "READER [%u] dropping [%u]\n", hdr->tagID);
+
+		Packet::free(pkt);
 
 	}
 
@@ -195,6 +209,8 @@ void RfidReadAgent::sendCollection() {
 
 	send(pkt, (Handler*) 0);
 
+	lastTimeCollectWasSend = Scheduler::instance().clock();
+
 	//slotSenderTimer->send(pkt);
 }
 
@@ -255,6 +271,10 @@ void RfidReadAgent::sendReadMemory(uint32_t tagID) {
 
 void RfidReadAgent::endOfWindow() {
 
+	double slotsUsed = 0.;
+	double intervalSlot = 0;
+	double i;
+
 	state = READER_IDLE;
 
 	std::list<TagRecognized>::const_iterator it = tagsRecognized.begin();
@@ -265,7 +285,35 @@ void RfidReadAgent::endOfWindow() {
 		sendReadMemory(it->tagID);
 	}
 
+	if (tagsRecognized.size() > 0) {
+
+		slotsUsed = ((double) tagsRecognized.size()) / ((double) numberOfSlots);
+		sumOfDelays /= tagsRecognized.size();
+		intervalSlot = sumOfDelays + 2. * 1e-3;
+		i = 1.;
+
+		while ((i * 53. * 1e-3) < intervalSlot * ((double) tagsRecognized.size())) {
+			i = i + 1.;
+		}
+
+		windowSize = (int) i * 53;
+		numberOfSlots = (int) ((windowSize * 1e-3) / intervalSlot);
+
+		if (slotsUsed > 0.8) {
+			windowSize *= 2;
+			numberOfSlots = (int) ((windowSize * 1e-3) / intervalSlot);
+		}
+
+		fprintf(stderr, "windowSize = %d\n", windowSize);
+		fprintf(stderr, "numberOfSlots = %d\n", numberOfSlots);
+		fprintf(stderr, "delays = %f\n", sumOfDelays);
+		fprintf(stderr, "slotsUsed = %f\n", slotsUsed);
+
+	}
+
 	tagsRecognized.clear();
+
+	sumOfDelays = 0.;
 
 	//recollectionTimer->schedule(INTERVAL_TO_SCAN_AGAIN);
 	wakeUpCommand->startSendingWakeUpAfter(INTERVAL_TO_SCAN_AGAIN);

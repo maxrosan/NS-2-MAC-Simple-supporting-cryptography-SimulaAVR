@@ -89,6 +89,8 @@ protected:
 	RecollectionTimer* recollectionTimer;
 	WakeUpCommand *wakeUpCommand;
 	SlotSenderTimer *slotSenderTimer;
+	double lastTimeCollectWasSend;
+	double sumOfDelays;
 
 	int start(int argc, const char*const* argv);
 };
