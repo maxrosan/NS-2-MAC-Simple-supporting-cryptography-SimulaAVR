@@ -51,6 +51,7 @@ for nodeId in energy:
 
 	avgConsumption = avgConsumption + (initialEnergy[nodeId] - energy[nodeId])
 
-avgConsumption = avgConsumption / len(energy)
+if len(energy) > 0:
+	avgConsumption = avgConsumption / len(energy)
 
 print "%f %f %d %d %d" % (totalConsumption, avgConsumption, packetsDropped, packetsSent, packetsReceived)

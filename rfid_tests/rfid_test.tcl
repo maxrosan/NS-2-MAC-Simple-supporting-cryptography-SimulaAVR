@@ -13,7 +13,7 @@ set val(ll) LL ;# link layer type
 set val(ant) Antenna/OmniAntenna ;# antenna model
 set val(ifqlen) 1000 ;# max packet in ifq
 set val(nReaders) 4 ;
-set val(nn) 24 ;
+set val(nn) 14 ;
 set val(rp) DumbAgent ;# routing protocol
 #set val(rp) DSDV ;# routing protocol
 set val(x) 500 ;# X dimension of topography
@@ -95,7 +95,9 @@ $topo load_flatgrid $val(x) $val(y)
 
 set chan_1_ [new $val(chan)]
 
-$ns node-config -adhocRouting $val(rp) -llType $val(ll) -macType $val(mac) -ifqType $val(ifq) -ifqLen $val(ifqlen) -antType $val(ant) -propType $val(prop) -phyType $val(netif) -channel $chan_1_ -topoInstance $topo -agentTrace ON -routerTrace ON -macTrace ON -movementTrace ON -energyModel "EnergyModel" -initialEnergy 8640.0 -txPower 0.08 -rxPower 0.0855 -idlePower 0.0085 -sleepPower 1e-06
+$ns node-config -adhocRouting $val(rp) -llType $val(ll) -macType $val(mac) -ifqType $val(ifq) -ifqLen $val(ifqlen) -antType $val(ant) -propType $val(prop) -phyType $val(netif) -channel $chan_1_ -topoInstance $topo -agentTrace ON -routerTrace ON -macTrace ON -movementTrace ON 
+
+#-energyModel "EnergyModel" -initialEnergy 8640.0 -txPower 0.08 -rxPower 0.0855 -idlePower 0.0085 -sleepPower 1e-06
 
 #puts $val(nn)
 #

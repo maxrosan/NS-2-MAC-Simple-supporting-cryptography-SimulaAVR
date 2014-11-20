@@ -54,7 +54,7 @@ elif [ "x$1" == "xtest" ]; then
 			#cp rfid_tests/rfid.tr rfid_tests/log/rfid_${n}_${alg}_${timestamp}.tr
 			#cp rfid_tests/rfid.nam rfid_tests/log/rfid_${n}_${alg}_${timestamp}.nam
 
-			pypy rfid_tests/graph.py rfid.txt >> rfid_tests/log/recognized_${n}_${alg}.txt
+			pypy rfid_tests/graph.py rfid.txt $n >> rfid_tests/log/recognized_${n}_${alg}.txt
 			pypy rfid_tests/trace.py rfid_tests/rfid.tr >> rfid_tests/log/trace_${n}_${alg}.txt
 
 		done;

@@ -2,6 +2,7 @@
 import sys
 
 fileName = sys.argv[1]
+
 logFile = open(fileName)
 lineString = logFile.readline()
 
@@ -9,6 +10,7 @@ numberOfCollectionsResponse = 0
 numberOfSleeps = 0
 
 while len(lineString) > 0:
+
 	args = lineString.split(" ")
 
 	time = float(args[0])
@@ -23,4 +25,4 @@ while len(lineString) > 0:
 	lineString = logFile.readline()
 
 
-print "%f" % (float(numberOfSleeps) / numberOfCollectionsResponse)
+print "%f %d" % ( float(numberOfSleeps) / numberOfCollectionsResponse,  numberOfCollectionsResponse )
