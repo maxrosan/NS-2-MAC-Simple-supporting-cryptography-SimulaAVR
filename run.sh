@@ -10,7 +10,7 @@ elif [ "x$1" == "xall" ]; then
 
 	rm rfid_tests/log/*
 
-	for i in `seq 1 30`; do
+	for i in `seq 1 10`; do
 
 		./run.sh test
 
@@ -20,7 +20,7 @@ elif [ "x$1" == "xtest" ]; then
 
 	timestamp=$(date +%s)
 	
-	numberOfNodes=( "14" "54" "104" "204" )
+	numberOfNodes=( "14" "54" "104" )
 	algorithms=( "NONE" "AES" "DES" "KLEIN" "TEA" "KATAN" "HIGHT" "RC6" )
 	cyclesToAuthenticate=( "0" "22403" "271998" "11830" "8319" "179563" "11509" "95389" )
 	cyclesToEncrypt=( "0" "559766" "17376003" "718699" "500547" "14865463" "413521" "244960" )
