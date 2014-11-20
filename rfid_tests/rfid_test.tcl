@@ -55,27 +55,11 @@ Agent/RfidTag       set intervalToWaitSleepCommand_ 5;
 #Agent/RfidTag       set numberOfCyclesForEncrypting_ 0; # dummy data
 Agent/RfidTag       set intervalToCalculateColdStart_ 900; # dummy data
 Agent/RfidTag       set intervalToCalculateHotStart_ 120;
-Agent/RfidTag       set useGPS_ 1;
+
+Agent/RfidTag set useGPS_ 1;
 
 Agent/RfidTag set numberOfCyclesForAuthenticating_ 22403 ;
 Agent/RfidTag set numberOfCyclesForEncrypting_ 559766 ;
-
-# key scheduling + encrypting
-# Agent/RfidTag set numberOfCyclesForAuthenticating_ 22403; # AES
-# Agent/RfidTag set numberOfCyclesForAuthenticating_ 271998; # DES
-# Agent/RfidTag set numberOfCyclesForAuthenticating_ 11830; # KLEIN64
-# Agent/RfidTag set numberOfCyclesForAuthenticating_ 8319; # TEA
-# Agent/RfidTag set numberOfCyclesForAuthenticating_ 179563; # KATAN48
-# Agent/RfidTag set numberOfCyclesForAuthenticating_ 11509; # HIGHT
-# Agent/RfidTag set numberOfCyclesForAuthenticating_ 95389; # RC6
-
-# Agent/RfidTag set numberOfCyclesForEncrypting_ 559766; # AES
-# Agent/RfidTag set numberOfCyclesForEncrypting_ 17376003; # DES
-# Agent/RfidTag set numberOfCyclesForEncrypting_ 718699; # KLEIN64
-# Agent/RfidTag set numberOfCyclesForEncrypting_ 500547; # TEA
-# Agent/RfidTag set numberOfCyclesForEncrypting_ 14865463; # KATAN48
-# Agent/RfidTag set numberOfCyclesForEncrypting_ 413521; # HIGHT
-# Agent/RfidTag set numberOfCyclesForEncrypting_ 244960; # RC6
 
 #Open a trace file
 #set nf [open out.nam w]

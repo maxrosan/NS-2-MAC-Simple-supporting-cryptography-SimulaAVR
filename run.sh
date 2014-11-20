@@ -25,7 +25,7 @@ elif [ "x$1" == "xtest" ]; then
 	cyclesToAuthenticate=( "0" "22403" "271998" "11830" "8319" "179563" "11509" "95389" )
 	cyclesToEncrypt=( "0" "559766" "17376003" "718699" "500547" "14865463" "413521" "244960" )
 
-	set -i "s/Agent\/RfidTag       set useGPS_ .*/Agent\/RfidTag       set useGPS_ 1;/" rfid_tests/rfid_test.tcl
+	sed -i "s/Agent\/RfidTag set useGPS_ .*/Agent\/RfidTag set useGPS_ 1;/" rfid_tests/rfid_test.tcl
 
 	sed -i 's/$ns node-config .*/$ns node-config -adhocRouting $val(rp) -llType $val(ll) -macType $val(mac) -ifqType $val(ifq) -ifqLen $val(ifqlen) -antType $val(ant) -propType $val(prop) -phyType $val(netif) -channel $chan_1_ -topoInstance $topo -agentTrace ON -routerTrace ON -macTrace ON -movementTrace ON -energyModel "EnergyModel" -initialEnergy 8640.0 -txPower 0.08 -rxPower 0.0855 -idlePower 0.0085 -sleepPower 1e-06/' rfid_tests/rfid_test.tcl
 
@@ -45,8 +45,8 @@ elif [ "x$1" == "xtest" ]; then
 
 
 			sed -i "s/^set val(nn).*/set val(nn) ${n} ;/" rfid_tests/rfid_test.tcl
-			set -i "s/Agent\/RfidTag set numberOfCyclesForAuthenticating_ .*/Agent\/RfidTag set numberOfCyclesForAuthenticating_ ${cyclesToAuthenticate[$i]} ;/" rfid_tests/rfid_test.tcl
-			set -i "s/Agent\/RfidTag set numberOfCyclesForEncrypting_ .*/Agent\/RfidTag set numberOfCyclesForEncrypting_ ${cyclesToAuthenticate[$i]} ;/" rfid_tests/rfid_test.tcl
+			sed -i "s/Agent\/RfidTag set numberOfCyclesForAuthenticating_ .*/Agent\/RfidTag set numberOfCyclesForAuthenticating_ ${cyclesToAuthenticate[$i]} ;/" rfid_tests/rfid_test.tcl
+			sed -i "s/Agent\/RfidTag set numberOfCyclesForEncrypting_ .*/Agent\/RfidTag set numberOfCyclesForEncrypting_ ${cyclesToAuthenticate[$i]} ;/" rfid_tests/rfid_test.tcl
 
 			./run.sh run
 
@@ -66,9 +66,9 @@ elif [ "x$1" == "xtest" ]; then
 	defaultNumberOfNodes=104
 
 	sed -i "s/set val(nn).*/set val(nn) ${defaultNumberOfNodes} ;/" rfid_tests/rfid_test.tcl
-	set -i "s/Agent\/RfidTag set numberOfCyclesForAuthenticating_ .*/Agent\/RfidTag set numberOfCyclesForAuthenticating_ 0 ;/" rfid_tests/rfid_test.tcl
-	set -i "s/Agent\/RfidTag set numberOfCyclesForEncrypting_ .*/Agent\/RfidTag set numberOfCyclesForEncrypting_ 0 ;/" rfid_tests/rfid_test.tcl
-	set -i "s/Agent\/RfidTag       set useGPS_ .*/Agent\/RfidTag       set useGPS_ 0;/" rfid_tests/rfid_test.tcl
+	sed -i "s/Agent\/RfidTag set numberOfCyclesForAuthenticating_ .*/Agent\/RfidTag set numberOfCyclesForAuthenticating_ 0 ;/" rfid_tests/rfid_test.tcl
+	sed -i "s/Agent\/RfidTag set numberOfCyclesForEncrypting_ .*/Agent\/RfidTag set numberOfCyclesForEncrypting_ 0 ;/" rfid_tests/rfid_test.tcl
+	sed -i "s/Agent\/RfidTag set useGPS_ .*/Agent\/RfidTag set useGPS_ 0;/" rfid_tests/rfid_test.tcl
 
 	#cp rfid.txt rfid_tests/log/rfid_without_gps_${timestamp}.txt
 	#cp rfid_tests/rfid.tr rfid_tests/log/rfid_without_gps_${timestamp}.tr
@@ -85,9 +85,9 @@ elif [ "x$1" == "xtest" ]; then
 	defaultNumberOfNodes=104
 
 	sed -i "s/set val(nn).*/set val(nn) ${defaultNumberOfNodes} ;/" rfid_tests/rfid_test.tcl
-	set -i "s/Agent\/RfidTag       set useGPS_ .*/Agent\/RfidTag       set useGPS_ 1;/" rfid_tests/rfid_test.tcl
-	set -i "s/Agent\/RfidTag set numberOfCyclesForAuthenticating_ .*/Agent\/RfidTag set numberOfCyclesForAuthenticating_ 22403 ;/" rfid_tests/rfid_test.tcl
-	set -i "s/Agent\/RfidTag set numberOfCyclesForEncrypting_ .*/Agent\/RfidTag set numberOfCyclesForEncrypting_ 559766 ;/" rfid_tests/rfid_test.tcl
+	sed -i "s/Agent\/RfidTag set useGPS_ .*/Agent\/RfidTag set useGPS_ 1;/" rfid_tests/rfid_test.tcl
+	sed -i "s/Agent\/RfidTag set numberOfCyclesForAuthenticating_ .*/Agent\/RfidTag set numberOfCyclesForAuthenticating_ 22403 ;/" rfid_tests/rfid_test.tcl
+	sed -i "s/Agent\/RfidTag set numberOfCyclesForEncrypting_ .*/Agent\/RfidTag set numberOfCyclesForEncrypting_ 559766 ;/" rfid_tests/rfid_test.tcl
 	sed -i 's/$ns node-config .*/$ns node-config -adhocRouting $val(rp) -llType $val(ll) -macType $val(mac) -ifqType $val(ifq) -ifqLen $val(ifqlen) -antType $val(ant) -propType $val(prop) -phyType $val(netif) -channel $chan_1_ -topoInstance $topo -agentTrace ON -routerTrace ON -macTrace ON -movementTrace ON/' rfid_tests/rfid_test.tcl
 
 	./run.sh run
