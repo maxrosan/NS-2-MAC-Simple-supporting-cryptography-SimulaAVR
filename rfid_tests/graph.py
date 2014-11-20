@@ -1,5 +1,5 @@
 
-import sys, numpy
+import sys
 
 fileName = sys.argv[1]
 logFile = open(fileName)
@@ -23,4 +23,4 @@ while len(lineString) > 0:
 	lineString = logFile.readline()
 
 
-print "%d %d %f" % (numberOfCollectionsResponse, numberOfSleeps, float(numberOfSleeps) / numberOfCollectionsResponse)
+print "%f" % (float(numberOfSleeps) / numberOfCollectionsResponse)

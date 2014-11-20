@@ -8,6 +8,8 @@ elif [ "x$1" == "xcompile" ]; then
 	make clean; make -j32 > /dev/null 2>&1; make
 elif [ "x$1" == "xall" ]; then
 
+	rm rfid_tests/log/*
+
 	for i in `seq 1 30`; do
 
 		./run.sh test
@@ -48,9 +50,12 @@ elif [ "x$1" == "xtest" ]; then
 
 			./run.sh run
 
-			cp rfid.txt rfid_tests/log/rfid_${n}_${alg}_${timestamp}.txt
-			cp rfid_tests/rfid.tr rfid_tests/log/rfid_${n}_${alg}_${timestamp}.tr
-			cp rfid_tests/rfid.nam rfid_tests/log/rfid_${n}_${alg}_${timestamp}.nam
+			#cp rfid.txt rfid_tests/log/rfid_${n}_${alg}_${timestamp}.txt
+			#cp rfid_tests/rfid.tr rfid_tests/log/rfid_${n}_${alg}_${timestamp}.tr
+			#cp rfid_tests/rfid.nam rfid_tests/log/rfid_${n}_${alg}_${timestamp}.nam
+
+			pypy rfid_tests/graph.py rfid.txt >> rfid_tests/log/recognized_${n}_${alg}.txt
+			pypy rfid_tests/trace.py rfid_tests/rfid.tr >> rfid_tests/log/trace_${n}_${alg}.txt
 
 		done;
 
@@ -65,11 +70,14 @@ elif [ "x$1" == "xtest" ]; then
 	set -i "s/Agent\/RfidTag set numberOfCyclesForEncrypting_ .*/Agent\/RfidTag set numberOfCyclesForEncrypting_ 0 ;/" rfid_tests/rfid_test.tcl
 	set -i "s/Agent\/RfidTag       set useGPS_ .*/Agent\/RfidTag       set useGPS_ 0;/" rfid_tests/rfid_test.tcl
 
-	cp rfid.txt rfid_tests/log/rfid_without_gps_${timestamp}.txt
-	cp rfid_tests/rfid.tr rfid_tests/log/rfid_without_gps_${timestamp}.tr
-	cp rfid_tests/rfid.nam rfid_tests/log/rfid_without_gps_${timestamp}.nam
+	#cp rfid.txt rfid_tests/log/rfid_without_gps_${timestamp}.txt
+	#cp rfid_tests/rfid.tr rfid_tests/log/rfid_without_gps_${timestamp}.tr
+	#cp rfid_tests/rfid.nam rfid_tests/log/rfid_without_gps_${timestamp}.nam
 
 	./run.sh run
+
+	pypy rfid_tests/graph.py rfid.txt >> rfid_tests/log/recognized_gps.txt
+	pypy rfid_tests/trace.py rfid_tests/rfid.tr >> rfid_tests/log/trace_gps.txt
 
 	# WITHOUT ENERGY MODEL
 
@@ -84,9 +92,11 @@ elif [ "x$1" == "xtest" ]; then
 
 	./run.sh run
 
-	cp rfid.txt rfid_tests/log/rfid_${defaultNumberOfNodes}_${defaultAlgorithm}_without_energymodel_${timestamp}.txt
-	cp rfid_tests/rfid.tr rfid_tests/rfid_${defaultNumberOfNodes}_${defaultAlgorithm}_without_energymodel_${timestamp}.tr
-	cp rfid_tests/rfid.nam rfid_tests/rfid_${defaultNumberOfNodes}_${defaultAlgorithm}_without_energymodel_${timestamp}.nam
+	#cp rfid.txt rfid_tests/log/rfid_${defaultNumberOfNodes}_${defaultAlgorithm}_without_energymodel_${timestamp}.txt
+	#cp rfid_tests/rfid.tr rfid_tests/rfid_${defaultNumberOfNodes}_${defaultAlgorithm}_without_energymodel_${timestamp}.tr
+	#cp rfid_tests/rfid.nam rfid_tests/rfid_${defaultNumberOfNodes}_${defaultAlgorithm}_without_energymodel_${timestamp}.nam
 
+	pypy rfid_tests/graph.py rfid.txt >> rfid_tests/log/recognized_without_energy.txt
+	pypy rfid_tests/trace.py rfid_tests/rfid.tr >> rfid_tests/log/trace_without_energy.txt
 
 fi;
