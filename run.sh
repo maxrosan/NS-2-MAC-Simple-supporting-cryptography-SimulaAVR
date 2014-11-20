@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ "x$1" == "xrun_out" ]; then
 	./ns rfid_tests/rfid_test.tcl
@@ -32,6 +32,7 @@ elif [ "x$1" == "xtest" ]; then
 
 		rm rfid_tests/*.tr
 		rm rfid_tests/*.nam
+		rm rfid.txt
 
 		i=0
 		for alg in "${algorithms[@]}"; do
