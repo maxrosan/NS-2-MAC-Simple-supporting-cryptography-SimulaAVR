@@ -83,6 +83,8 @@ protected:
 	double endOfNextTask;
 	double lastTimeCPUChecked;
 
+	int useGPS;
+
 	void collectId(Packet *p, hdr_rfid *hdr);
 	void readMemory(Packet *p, hdr_rfid *hdr);
 	EnergyModel* em() { return Node::get_node_by_address(addr())->energy_model(); }

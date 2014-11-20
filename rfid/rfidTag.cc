@@ -50,6 +50,8 @@ RfidTagAgent::RfidTagAgent() : Agent(PT_RFID) {
 	lastTimeCalculatedGPSColdState = 0.;
 	lastTimeCalculatedGPSHotState = 0.;
 
+	useGPS = 0;
+
 	bind("packetSize_", &size_);
 	bind("intervalToWaitToSleepAgain_", &intervalToWaitToSleepAgain);
 	bind("intervalToWaitSleepCommand_", &intervalToWaitSleepCommand);
@@ -57,6 +59,7 @@ RfidTagAgent::RfidTagAgent() : Agent(PT_RFID) {
 	bind("numberOfCyclesForEncrypting_", &numberOfCyclesForEncrypting);
 	bind("intervalToCalculateColdStart_", &intervalToCalculateColdStart);
 	bind("intervalToCalculateHotStart_", &intervalToCalculateHotStart);
+	bind("useGPS_", &useGPS);
 
 	checkStateTimer->setInterval(intervalToWaitToSleepAgain);
 	waitSleepTimer->setTimeToWaitSleepCommand(intervalToWaitSleepCommand);
@@ -436,27 +439,29 @@ void RfidTagAgent::calculateGPS() {
 
 	double clock = Scheduler::instance().clock();
 
-	if (clock - lastTimeCalculatedGPSColdState > intervalToCalculateColdStart) {
-		consume(GPS_VCC * GPS_CURRENT_NORMAL * GPS_COLD_START);
-		lastTimeCalculatedGPSHotState = lastTimeCalculatedGPSColdState = clock;
+	if (useGPS) {
+		if (clock - lastTimeCalculatedGPSColdState > intervalToCalculateColdStart) {
+			consume(GPS_VCC * GPS_CURRENT_NORMAL * GPS_COLD_START);
+			lastTimeCalculatedGPSHotState = lastTimeCalculatedGPSColdState = clock;
 
-		if (endOfNextTask - clock < GPS_COLD_START)
-			endOfNextTask = clock + GPS_COLD_START;
+			if (endOfNextTask - clock < GPS_COLD_START)
+				endOfNextTask = clock + GPS_COLD_START;
 
-		logEvent("%f gps %u cold", Scheduler::instance().clock(), tagID);
+			logEvent("%f gps %u cold", Scheduler::instance().clock(), tagID);
 
-	} else if (clock - lastTimeCalculatedGPSHotState > intervalToCalculateHotStart) {
-		consume(GPS_VCC * GPS_CURRENT_NORMAL * GPS_HOT_START);
-		lastTimeCalculatedGPSHotState = clock;
-		endOfNextTask = clock + GPS_HOT_START;
-
-		if (endOfNextTask - clock < GPS_HOT_START)
+		} else if (clock - lastTimeCalculatedGPSHotState > intervalToCalculateHotStart) {
+			consume(GPS_VCC * GPS_CURRENT_NORMAL * GPS_HOT_START);
+			lastTimeCalculatedGPSHotState = clock;
 			endOfNextTask = clock + GPS_HOT_START;
 
-		logEvent("%f gps %u hot", Scheduler::instance().clock(), tagID);
+			if (endOfNextTask - clock < GPS_HOT_START)
+				endOfNextTask = clock + GPS_HOT_START;
 
-	} else {
-		consume(GPS_VCC * GPS_CURRENT_HIBER * (clock - lastTimeCalculatedGPSHotState));
+			logEvent("%f gps %u hot", Scheduler::instance().clock(), tagID);
+
+		} else {
+			consume(GPS_VCC * GPS_CURRENT_HIBER * (clock - lastTimeCalculatedGPSHotState));
+		}
 	}
 
 	if (endOfNextTask > clock) {

@@ -13,13 +13,12 @@ set val(ll) LL ;# link layer type
 set val(ant) Antenna/OmniAntenna ;# antenna model
 set val(ifqlen) 1000 ;# max packet in ifq
 set val(nReaders) 4 ;
-set val(nn) 204 ;
+set val(nn) 104 ;
 set val(rp) DumbAgent ;# routing protocol
 #set val(rp) DSDV ;# routing protocol
 set val(x) 500 ;# X dimension of topography
 set val(y) 500 ;# Y dimension of topography
-set val(zones) 2 ;
-set val(stop) 100 ;# time of simulation end
+set val(stop) 7200 ;# time of simulation end
 
 #Create a simulator object
 set ns [new Simulator]
@@ -50,12 +49,13 @@ Phy/WirelessPhy     set CSThresh_ 2.261e-15  ;#Carrier sense power CSThresh=0.9*
 #(GFSK, 1% packet error rate, 20 bytes packet length, 127 kHz deviation, 540 kHz digital channel filter bandwidth)
 Phy/WirelessPhy     set RxThresh_ 2.512e-15  ;#Receive power  
 
-Agent/RfidTag       set intervalToWaitToSleepAgain_ 10
-Agent/RfidTag       set intervalToWaitSleepCommand_ 5
+Agent/RfidTag       set intervalToWaitToSleepAgain_ 10;
+Agent/RfidTag       set intervalToWaitSleepCommand_ 5;
 #Agent/RfidTag       set numberOfCyclesForAuthenticating_ 0; # password
 #Agent/RfidTag       set numberOfCyclesForEncrypting_ 0; # dummy data
 Agent/RfidTag       set intervalToCalculateColdStart_ 900; # dummy data
-Agent/RfidTag       set intervalToCalculateHotStart_ 120
+Agent/RfidTag       set intervalToCalculateHotStart_ 120;
+Agent/RfidTag       set useGPS_ 1;
 
 Agent/RfidTag set numberOfCyclesForAuthenticating_ 22403 ;
 Agent/RfidTag set numberOfCyclesForEncrypting_ 559766 ;
@@ -95,26 +95,7 @@ $topo load_flatgrid $val(x) $val(y)
 
 set chan_1_ [new $val(chan)]
 
-$ns node-config -adhocRouting $val(rp) \
-	-llType $val(ll) \
-	-macType $val(mac) \
-	-ifqType $val(ifq) \
-	-ifqLen $val(ifqlen) \
-	-antType $val(ant) \
-	-propType $val(prop) \
-	-phyType $val(netif) \
-        -channel $chan_1_ \
-	-topoInstance $topo \
-	-agentTrace ON \
-	-routerTrace ON \
-	-macTrace ON \
-	-movementTrace ON \
-	-energyModel "EnergyModel" \
-	-initialEnergy 8640.0 \
-	-txPower 0.08 \
-	-rxPower 0.0855 \
-	-idlePower 0.0085 \
-	-sleepPower 1e-06
+$ns node-config -adhocRouting $val(rp) -llType $val(ll) -macType $val(mac) -ifqType $val(ifq) -ifqLen $val(ifqlen) -antType $val(ant) -propType $val(prop) -phyType $val(netif) -channel $chan_1_ -topoInstance $topo -agentTrace ON -routerTrace ON -macTrace ON -movementTrace ON
 
 #puts $val(nn)
 #
