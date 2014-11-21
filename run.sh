@@ -46,7 +46,7 @@ elif [ "x$1" == "xtest" ]; then
 
 			sed -i "s/^set val(nn).*/set val(nn) ${n} ;/" rfid_tests/rfid_test.tcl
 			sed -i "s/Agent\/RfidTag set numberOfCyclesForAuthenticating_ .*/Agent\/RfidTag set numberOfCyclesForAuthenticating_ ${cyclesToAuthenticate[$i]} ;/" rfid_tests/rfid_test.tcl
-			sed -i "s/Agent\/RfidTag set numberOfCyclesForEncrypting_ .*/Agent\/RfidTag set numberOfCyclesForEncrypting_ ${cyclesToAuthenticate[$i]} ;/" rfid_tests/rfid_test.tcl
+			sed -i "s/Agent\/RfidTag set numberOfCyclesForEncrypting_ .*/Agent\/RfidTag set numberOfCyclesForEncrypting_ ${cyclesToEncrypt[$i]} ;/" rfid_tests/rfid_test.tcl
 
 			./run.sh run
 
