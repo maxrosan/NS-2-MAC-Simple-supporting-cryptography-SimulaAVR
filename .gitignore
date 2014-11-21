@@ -28,3 +28,4 @@ avr.vpi
 simulavr/Debug/
 simulavr/Release/
 
+/Debug/
