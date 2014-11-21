@@ -21,7 +21,7 @@ elif [ "x$1" == "xtest" ]; then
 	timestamp=$(date +%s)
 	
 	numberOfNodes=( "14" "54" "104" )
-	algorithms=( "NONE" "AES" "DES" "KLEIN" "TEA" "KATAN" "HIGHT" "RC6" )
+	algorithms=( "NONE" "AES" "DES" "KLEIN" "TEA" "KATAN" "HIGHT" )
 	cyclesToAuthenticate=( "0" "22403" "271998" "11830" "8319" "179563" "11509" )
 	cyclesToEncrypt=( "0" "559766" "17376003" "718699" "500547" "14865463" "413521" )
 
