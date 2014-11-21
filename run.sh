@@ -22,8 +22,8 @@ elif [ "x$1" == "xtest" ]; then
 	
 	numberOfNodes=( "14" "54" "104" )
 	algorithms=( "NONE" "AES" "DES" "KLEIN" "TEA" "KATAN" "HIGHT" "RC6" )
-	cyclesToAuthenticate=( "0" "22403" "271998" "11830" "8319" "179563" "11509" "95389" )
-	cyclesToEncrypt=( "0" "559766" "17376003" "718699" "500547" "14865463" "413521" "244960" )
+	cyclesToAuthenticate=( "0" "22403" "271998" "11830" "8319" "179563" "11509" )
+	cyclesToEncrypt=( "0" "559766" "17376003" "718699" "500547" "14865463" "413521" )
 
 	sed -i "s/Agent\/RfidTag set useGPS_ .*/Agent\/RfidTag set useGPS_ 1;/" rfid_tests/rfid_test.tcl
 
@@ -54,6 +54,8 @@ elif [ "x$1" == "xtest" ]; then
 			#cp rfid_tests/rfid.tr rfid_tests/log/rfid_${n}_${alg}_${timestamp}.tr
 			#cp rfid_tests/rfid.nam rfid_tests/log/rfid_${n}_${alg}_${timestamp}.nam
 
+			cp rfid_tests/rfid_test.tcl rfid_tests/log/config_${n}_${alg}.txt
+
 			pypy rfid_tests/graph.py rfid.txt $n >> rfid_tests/log/recognized_${n}_${alg}.txt
 			pypy rfid_tests/trace.py rfid_tests/rfid.tr >> rfid_tests/log/trace_${n}_${alg}.txt
 
@@ -79,6 +81,8 @@ elif [ "x$1" == "xtest" ]; then
 	pypy rfid_tests/graph.py rfid.txt >> rfid_tests/log/recognized_gps.txt
 	pypy rfid_tests/trace.py rfid_tests/rfid.tr >> rfid_tests/log/trace_gps.txt
 
+	cp rfid_tests/rfid_test.tcl rfid_tests/log/config_gps.txt
+
 	# WITHOUT ENERGY MODEL
 
 	defaultAlgorithm="AES"
@@ -98,5 +102,7 @@ elif [ "x$1" == "xtest" ]; then
 
 	pypy rfid_tests/graph.py rfid.txt >> rfid_tests/log/recognized_without_energy.txt
 	pypy rfid_tests/trace.py rfid_tests/rfid.tr >> rfid_tests/log/trace_without_energy.txt
+
+	cp rfid_tests/rfid_test.tcl rfid_tests/log/config_without_energy.txt
 
 fi;
