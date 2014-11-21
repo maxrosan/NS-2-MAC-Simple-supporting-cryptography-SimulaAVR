@@ -21,9 +21,9 @@ elif [ "x$1" == "xtest" ]; then
 	timestamp=$(date +%s)
 	
 	numberOfNodes=( "14" "54" "104" )
-	algorithms=( "NONE" "AES" "DES" "KLEIN" "TEA" "KATAN" "HIGHT" )
-	cyclesToAuthenticate=( "0" "22403" "271998" "11830" "8319" "179563" "11509" )
-	cyclesToEncrypt=( "0" "559766" "17376003" "718699" "500547" "14865463" "413521" )
+	algorithms=( "NONE" "AES" "DES" "KLEIN" "TEA" "KATAN" "HIGHT" "AES" "FAKE" )
+	cyclesToAuthenticate=( "0" "22403" "271998" "11830" "8319" "179563" "11509" "95389" "10")
+	cyclesToEncrypt=( "0" "559766" "17376003" "718699" "500547" "14865463" "413521" "244960" "10" )
 
 	sed -i "s/Agent\/RfidTag set useGPS_ .*/Agent\/RfidTag set useGPS_ 1;/" rfid_tests/rfid_test.tcl
 
