@@ -205,10 +205,14 @@ CMUPriQueue::prq_get_nexthop(nsaddr_t id)
 		ifq = &prq_snd_[q];
 		pprev = 0;
 		for(p = ifq->ifq_head; p; p = p->next_) {
-			struct hdr_cmn *ch = HDR_CMN(p);
+
+			struct hdr_cmn *ch = hdr_cmn::access(p);
+
+			if (ch == NULL) continue;
 
 			if(ch->next_hop() == id)
 				break;
+
 			pprev = p;
 		}
 

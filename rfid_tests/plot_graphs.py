@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,11 +30,13 @@ nodes = [ 14, 54, 104 ]
 
 N = len(nodes)
 width = 0.03       # the width of the bars
-ind = np.arange(N) * width
+ind = np.arange(N) * width + width/2
 
 fig, ax = plt.subplots()
 
 rects = []
+
+means = [ [], [], [] ]
 
 for algorithm in algorithms:
 
@@ -57,12 +60,20 @@ for algorithm in algorithms:
 		bars[algorithm].append(mean)
 		error[algorithm].append(errorValue)		
 
-	print bars[algorithm], error[algorithm], ind
+	#print bars[algorithm], error[algorithm], ind
+	print "\t \\hline"
+	print "\t %s & %0.2f & %0.2f & %0.2f\\\\" % (algorithm, bars[algorithm][0], bars[algorithm][1], bars[algorithm][2])
+
+	means[0].append(bars[algorithm][0])
+	means[1].append(bars[algorithm][1])
+	means[2].append(bars[algorithm][2])
 
 	rect = ax.bar(ind, bars[algorithm], width, color='r', yerr=error[algorithm])
 	rects.append(rect)
 
 	ind = ind + width * (len(nodes) + 1)
+
+print np.std(means[0]), np.std(means[1]), np.std(means[2])
 
 
 ax.set_ylabel('Consumo de energia (J)')
@@ -89,7 +100,7 @@ plt.savefig('rfid_tests/consumo_cifra.png')
 barsNone = []
 errorNone = []
 widthNone = 0.10       # the width of the bars
-indNone = np.arange(len(nodes)) * (width * 2)
+indNone = np.arange(len(nodes)) * (width * 2) + width/2
 figNone, axNone = plt.subplots()
 
 for numberOfNodes in nodes:
@@ -126,7 +137,7 @@ plt.savefig('rfid_tests/reconhecimento_tags.png')
 barsGPS = []
 errorGPS = []
 widthGPS = 0.10       # the width of the bars
-indGPS = np.arange(2) * (width * 2)
+indGPS = np.arange(2) * (width * 2) + width/2.
 figGPS, axGPS = plt.subplots()
 
 for fileName in [ folder + "/trace_gps.txt", folder + "/trace_104_AES.txt"]:
@@ -155,6 +166,88 @@ axGPS.set_xticks(indGPS + width/2.)
 axGPS.set_xticklabels( ( 'sem GPS', 'com GPS' ) )
 
 plt.savefig('rfid_tests/consumo_gps.png')
+
+
+###
+
+barsDrops = []
+errorDrops = []
+widthDrops = 0.10       # the width of the bars
+indDrops = np.arange(3) * (width * 3) + width/2.
+figDrops, axDrops = plt.subplots()
+
+for fileName in [ folder + "/recognized_14_NONE.txt", folder + "/recognized_54_NONE.txt", folder + "/recognized_104_NONE.txt" ]:
+
+	logFile = open(fileName)
+	lineString = logFile.readline()
+
+	values = [ ]
+
+	while len(lineString) > 0:
+		line = lineString.split(" ")
+		values.append(float(line[1]))
+		lineString = logFile.readline()
+
+	(mean, errorValue) = mean_confidence_interval(values)
+	print (mean, errorValue)
+
+	barsDrops.append(mean)
+	errorDrops.append(errorValue)
+
+rectNone = axDrops.bar(indDrops, barsDrops, width, color='#007f00', ecolor='b', yerr=errorDrops)
+
+axDrops.set_ylabel(u'Nº de respostas ao Collection')
+axDrops.set_title('Respostas ao Collection')
+axDrops.set_xticks(indDrops + width/2.)
+axDrops.set_xticklabels( ( '10 tags', '50 tags', '100 tags' ) )
+
+plt.savefig('rfid_tests/response_collect.png')
+
+##################
+
+barsDroppedPacket = []
+errorDroppedPacket = []
+barsSentPacket = []
+errorSentPacket = []
+
+widthDroppedPacket = 0.10       # the width of the bars
+indDroppedPacket = np.arange(2) * (width * 2) + width/2.
+figDroppedPacket, axDroppedPacket = plt.subplots()
+
+for fileName in [ folder + "/trace_104_NONE.txt", folder + "/trace_without_energy.txt" ]:
+
+	logFile = open(fileName)
+	lineString = logFile.readline()
+
+	values = [ ]
+	valuesSentPacket = [ ]
+
+	while len(lineString) > 0:
+		line = lineString.split(" ")
+		values.append(float(line[4])) # dropped packets
+		valuesSentPacket.append(float(line[2]))
+		lineString = logFile.readline()
+
+	(mean, errorValue) = mean_confidence_interval(values)
+	(meanSent, errorValueSent) = mean_confidence_interval(valuesSentPacket)
+	print (mean, errorValue)
+
+	barsDroppedPacket.append(mean)
+	barsSentPacket.append(meanSent)
+
+	errorDroppedPacket.append(errorValue)
+	errorSentPacket.append(errorValueSent)
+
+axDroppedPacket.bar(indDroppedPacket, barsDroppedPacket, width, color='#ff7f00', ecolor='b', yerr=errorDroppedPacket)
+#axDroppedPacket.bar(indDroppedPacket, barsSentPacket, width, color='#ff7f00', ecolor='b', yerr=errorSentPacket)
+
+axDroppedPacket.set_ylabel(u'Nº de pacotes recebidos (10^7)')
+axDroppedPacket.set_title('Pacotes recebidos')
+axDroppedPacket.set_xticks(indDroppedPacket + width/2.)
+axDroppedPacket.set_xticklabels( ( 'com EnergyModel', 'sem EnergyModel' ) )
+
+plt.savefig('rfid_tests/dropped_packet.png')
+
 
 #N = 5
 #menMeans = (20, 35, 30, 35, 27)
